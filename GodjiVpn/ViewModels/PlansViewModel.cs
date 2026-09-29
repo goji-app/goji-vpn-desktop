@@ -44,6 +44,7 @@ public sealed class ReferralEntryItem
     public required bool IsActive { get; init; }
     public required int BonusDays { get; init; }
     public string StatusBadge => IsActive ? "Активен" : "Неактивен";
+    public string Initial => DisplayName.Length > 0 ? DisplayName[..1].ToUpperInvariant() : "?";
     public string BonusLabel => BonusDays > 0 ? $"+{BonusDays} дн." : "";
     public bool HasBonusLabel => BonusDays > 0;
 }
@@ -174,6 +175,7 @@ public sealed partial class PlansViewModel : ObservableObject
     [ObservableProperty] private int daysLeft;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DevicesCountLabel))]
+    [NotifyPropertyChangedFor(nameof(DevicesSectionLabel))]
     private int deviceLimit;
     [ObservableProperty] private string? customerId;
     [ObservableProperty] private bool refreshing;
@@ -257,6 +259,24 @@ public sealed partial class PlansViewModel : ObservableObject
     public bool HasHiddenNews => _allNews.Count > CollapsedNewsCount;
     public string NewsToggleLabel => IsNewsExpanded ? "Свернуть" : "Показать все новости";
     public string NewsPageLabel => $"Страница {NewsPageIndex + 1} из {NewsTotalPages}";
+    /// <summary>Пейджер в шапке секции новостей v5: "‹ 1 / 3 ›".</summary>
+    public string NewsPagerLabel => $"{NewsPageIndex + 1} / {NewsTotalPages}";
+    public bool ShowNewsShowAll => !IsNewsExpanded && HasHiddenNews;
+    public bool ShowNewsPager => IsNewsExpanded && NewsTotalPages > 1;
+    public bool HasNews => _allNews.Count > 0;
+
+    /// <summary>Подпись секции устройств v5: "УСТРОЙСТВА · 1 из 5".</summary>
+    public string DevicesSectionLabel => DeviceLimit > 0 ? $"УСТРОЙСТВА · {Devices.Count} из {DeviceLimit}" : "УСТРОЙСТВА";
+
+    /// <summary>Индекс выбранного периода для сегмент-контрола (двусторонний биндинг).</summary>
+    [ObservableProperty] private int selectedPeriodIndex;
+    private bool _syncingPeriodIndex;
+
+    partial void OnSelectedPeriodIndexChanged(int value)
+    {
+        if (_syncingPeriodIndex || value < 0 || value >= Periods.Count) return;
+        SelectPeriod(Periods[value].Months);
+    }
 
     public PlansViewModel(ApiClient api, SubscriptionRepository subscription)
     {
@@ -287,6 +307,7 @@ public sealed partial class PlansViewModel : ObservableObject
             }
             catch { /* устройства — вспомогательная секция, не критична для остального экрана */ }
             OnPropertyChanged(nameof(DevicesCountLabel));
+            OnPropertyChanged(nameof(DevicesSectionLabel));
         }
 
         // Свежая по CreatedAt первая — порядок с бэкенда не гарантирован (см. BroadcastNotifier).
@@ -368,6 +389,55 @@ public sealed partial class PlansViewModel : ObservableObject
             };
         }
         catch { Partner = null; }
+
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_DEMO") == "1") FillPreviewDemo();
+    }
+
+    /// <summary>Только для превью-экземпляра (GODJI_UI_PREVIEW_DEMO=1, см. App.xaml.cs) — сверка
+    /// заполненного экрана с эталоном без реальной сессии. В обычной работе не вызывается.</summary>
+    private void FillPreviewDemo()
+    {
+        PlanName = "EU + RU Mobile";
+        ExpiryLabel = "14 октября";
+        DaysLeft = 17;
+        DeviceLimit = 5;
+        PersonalDiscountPercent = 10;
+        _subscriptionId = 1;
+        OnPropertyChanged(nameof(HasDevices));
+        Devices.Clear();
+        Devices.Add(new DeviceItem { Hwid = "a", Name = "Pixel 8", Platform = "Android", ConnectedVia = "Goji VPN 1.0.107", CreatedAtLabel = "3 сентября" });
+        Devices.Add(new DeviceItem { Hwid = "b", Name = "Рабочий ноутбук", Platform = "Windows", CreatedAtLabel = "12 сентября" });
+        OnPropertyChanged(nameof(DevicesSectionLabel));
+        _rawPlans = new List<PlanInfo>
+        {
+            new() { Id = 1, Name = "EU Lite", Description = "1 устройство · Европа · ПЛОТЬ", Prices = { new PriceInfo { PriceType = "base", Price = 149, Currency = "₽", PeriodValue = 1, PeriodUnit = "month" }, new PriceInfo { PriceType = "base", Price = 402, Currency = "₽", PeriodValue = 3, PeriodUnit = "month" } } },
+            new() { Id = 2, Name = "EU + RU Mobile", Description = "3 устройства · Европа и Россия · LTE-узлы для 3G/4G, чтобы работать в обход ограничений мобильных сетей", Prices = { new PriceInfo { PriceType = "base", Price = 290, Currency = "₽", PeriodValue = 1, PeriodUnit = "month" }, new PriceInfo { PriceType = "base", Price = 672, Currency = "₽", PeriodValue = 3, PeriodUnit = "month" } } },
+            new() { Id = 3, Name = "Family", Description = "5 устройств · все узлы", Prices = { new PriceInfo { PriceType = "base", Price = 590, Currency = "₽", PeriodValue = 1, PeriodUnit = "month" }, new PriceInfo { PriceType = "base", Price = 1212, Currency = "₽", PeriodValue = 3, PeriodUnit = "month" } } },
+        };
+        Periods.Clear();
+        Periods.Add(new PeriodItem { Months = 1, Label = "1 месяц" });
+        Periods.Add(new PeriodItem { Months = 3, Label = "3 мес." });
+        SelectedMonths = 3;
+        RebuildPlanCards();
+        _allNews = new List<NewsItem>
+        {
+            new() { Id = "1", RawContent = "**Новый узел в Стамбуле**\n\nДобавили сервер в Турции — удобно, если нужен близкий к России выход с низким пингом.", DateLabel = "25 сентября", Buttons = new List<BroadcastButtonDto> { new() { Text = "Подробнее", Url = "https://gojihub.xyz" } } },
+            new() { Id = "2", RawContent = "Обновили приложение для Windows: новый дизайн «Стекло».", DateLabel = "20 сентября", Buttons = new List<BroadcastButtonDto>() },
+            new() { Id = "3", RawContent = "Третья новость.", DateLabel = "10 сентября", Buttons = new List<BroadcastButtonDto>() },
+        };
+        foreach (var n in _allNews) n.BuildCollapsed();
+        RefreshVisibleNews();
+        Referral = new ReferralUiModel
+        {
+            Link = "https://t.me/Shadow_Duck_bot?start=ref_48213",
+            TotalReferrals = 3, ActiveReferrals = 2, TotalBonusDays = 14,
+            Entries = new List<ReferralEntryItem>
+            {
+                new() { DisplayName = "@alex•••", IsActive = true, BonusDays = 7 },
+                new() { DisplayName = "Мари••", IsActive = false, BonusDays = 0 },
+            }
+        };
+        Partner = new PartnerUiModel { IsPartner = false, IsActive = false, ApplicationStatus = null, CommissionRate = 0, ClientCount = 0, TotalEarned = 0, AvailableBalance = 0, PendingBalance = 0 };
     }
 
     private static DeviceItem ToDeviceItem(DeviceDto d) => new()
@@ -442,6 +512,8 @@ public sealed partial class PlansViewModel : ObservableObject
         {
             await _api.DeleteDeviceAsync(subId, device.Hwid);
             Devices.Remove(device);
+            OnPropertyChanged(nameof(DevicesCountLabel));
+            OnPropertyChanged(nameof(DevicesSectionLabel));
         }
         catch { device.IsBusy = false; }
     }
@@ -507,6 +579,9 @@ public sealed partial class PlansViewModel : ObservableObject
             });
         }
         foreach (var p in Periods) p.IsSelected = p.Months == SelectedMonths;
+        _syncingPeriodIndex = true;
+        SelectedPeriodIndex = Math.Max(0, Periods.ToList().FindIndex(p => p.Months == SelectedMonths));
+        _syncingPeriodIndex = false;
     }
 
     [RelayCommand]
@@ -572,6 +647,10 @@ public sealed partial class PlansViewModel : ObservableObject
         OnPropertyChanged(nameof(HasHiddenNews));
         OnPropertyChanged(nameof(NewsToggleLabel));
         OnPropertyChanged(nameof(NewsPageLabel));
+        OnPropertyChanged(nameof(NewsPagerLabel));
+        OnPropertyChanged(nameof(ShowNewsShowAll));
+        OnPropertyChanged(nameof(ShowNewsPager));
+        OnPropertyChanged(nameof(HasNews));
         NewsPrevPageCommand.NotifyCanExecuteChanged();
         NewsNextPageCommand.NotifyCanExecuteChanged();
     }

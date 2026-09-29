@@ -17,6 +17,10 @@ public class ActiveBadge : UserControl
 {
     private readonly TextBlock _label = new();
     private readonly Grid _outer = new();
+    // Комета на Canvas: Canvas не участвует в размере бейджа — иначе её ширина (зависящая от
+    // ширины бейджа) раздувала бы сам бейдж и раскладка уходила в бесконечный цикл.
+    private readonly Canvas _cometLayer = new() { IsHitTestVisible = false };
+    private readonly Border _core = new() { Margin = new Thickness(1.5), Padding = new Thickness(10, 0, 12, 0) };
     private readonly Rectangle _comet = new();
     private readonly RotateTransform _cometRotate = new();
 
@@ -34,9 +38,10 @@ public class ActiveBadge : UserControl
 
         _comet.RenderTransform = _cometRotate;
         _comet.IsHitTestVisible = false;
-        _outer.Children.Add(_comet);
+        _cometLayer.Children.Add(_comet);
+        _outer.Children.Add(_cometLayer);
 
-        var core = new Border { Margin = new Thickness(1.5), Padding = new Thickness(10, 0, 12, 0) };
+        var core = _core;
         core.SetResourceReference(Border.BackgroundProperty, "RingCoreBrush");
         var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
@@ -83,14 +88,13 @@ public class ActiveBadge : UserControl
         var h = _outer.ActualHeight;
         if (w <= 0 || h <= 0) return;
         _outer.Clip = new RectangleGeometry(new Rect(0, 0, w, h), h / 2, h / 2);
-        if (_outer.Children[1] is Border core) core.CornerRadius = new CornerRadius((h - 3) / 2);
+        _core.CornerRadius = new CornerRadius((h - 3) / 2);
 
         var r = Math.Max(w, h);
         _comet.Width = r;
         _comet.Height = r;
-        _comet.HorizontalAlignment = HorizontalAlignment.Left;
-        _comet.VerticalAlignment = VerticalAlignment.Top;
-        _comet.Margin = new Thickness(w / 2, h / 2 - r, 0, 0);
+        Canvas.SetLeft(_comet, w / 2);
+        Canvas.SetTop(_comet, h / 2 - r);
         _cometRotate.CenterX = 0;
         _cometRotate.CenterY = r;
         var teal = TryFindResource("TealColor") is Color c ? c : Color.FromRgb(0, 167, 155);

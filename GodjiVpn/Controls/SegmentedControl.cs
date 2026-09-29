@@ -45,7 +45,18 @@ public class SegmentedControl : UserControl
 
     public static readonly DependencyProperty ItemsSourceProperty = DependencyProperty.Register(
         nameof(ItemsSource), typeof(IEnumerable), typeof(SegmentedControl),
-        new PropertyMetadata(null, (d, _) => ((SegmentedControl)d).RebuildItems()));
+        new PropertyMetadata(null, (d, e) => ((SegmentedControl)d).OnItemsSourceChanged(e.OldValue as IEnumerable, e.NewValue as IEnumerable)));
+
+    /// <summary>Коллекция может наполниться уже после привязки (периоды тарифа приходят с
+    /// бэкенда позже) — перестраиваемся и по изменению самой коллекции, не только по замене.</summary>
+    private void OnItemsSourceChanged(IEnumerable? oldValue, IEnumerable? newValue)
+    {
+        if (oldValue is System.Collections.Specialized.INotifyCollectionChanged oldNcc) oldNcc.CollectionChanged -= OnCollectionChanged;
+        if (newValue is System.Collections.Specialized.INotifyCollectionChanged newNcc) newNcc.CollectionChanged += OnCollectionChanged;
+        RebuildItems();
+    }
+
+    private void OnCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => RebuildItems();
 
     public IEnumerable? ItemsSource { get => (IEnumerable?)GetValue(ItemsSourceProperty); set => SetValue(ItemsSourceProperty, value); }
 

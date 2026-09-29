@@ -4,8 +4,8 @@ using System.Windows.Media;
 
 namespace GodjiVpn.Controls;
 
-/// <summary>Кольцевой индикатор "осталось N дней" — аналог DaysRing в PlansScreen.kt
-/// (Canvas-дуга с градиентной обводкой TealDeep→Teal, доля = daysLeft/30, ограничена [0,1]).</summary>
+/// <summary>Кольцевой индикатор "осталось N дней" — аналог DaysRing в PlansScreen.kt v5
+/// (дуга Teal по дорожке TrackBg, доля = daysLeft/30, ограничена [0,1]).</summary>
 public partial class DaysRing : UserControl
 {
     public static readonly DependencyProperty DaysProperty = DependencyProperty.Register(
@@ -37,7 +37,7 @@ public partial class DaysRing : UserControl
         if (w <= 0 || h <= 0) return;
 
         var center = new Point(w / 2, h / 2);
-        var radius = Math.Min(w, h) / 2 - 8;
+        var radius = Math.Min(w, h) / 2 - 3.5;
 
         if (fraction <= 0.001)
         {
