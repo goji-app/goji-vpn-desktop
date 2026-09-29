@@ -550,6 +550,15 @@ public sealed partial class PlansViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ShowReferralQr()
+    {
+        if (Referral is not { } r || string.IsNullOrEmpty(r.Link)) return;
+        new QrWindow("Пригласи друга",
+            "Друг наводит камеру телефона на код и сразу открывает твою пригласительную ссылку.",
+            r.Link, r.Link) { Owner = Application.Current.MainWindow }.ShowDialog();
+    }
+
+    [RelayCommand]
     private void OpenPartnerDashboard() => OpenUrl("https://gojihub.xyz/#/partner-dashboard");
 
     [RelayCommand]

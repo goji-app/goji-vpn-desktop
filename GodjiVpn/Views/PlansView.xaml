@@ -252,10 +252,18 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="{Binding Referral.Link}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"
                                            VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                <Button Grid.Column="1" Style="{StaticResource BareButton}" Command="{Binding CopyReferralLinkCommand}" VerticalAlignment="Center">
+                                <!-- QR ссылки: друг сканирует камерой прямо с экрана (порт 79b3e4b). -->
+                                <Button Grid.Column="1" Style="{StaticResource BareButton}" Command="{Binding ShowReferralQrCommand}" VerticalAlignment="Center"
+                                        Width="32" Height="32" Margin="0,0,6,0" ToolTip="QR-код ссылки" AutomationProperties.Name="QR-код ссылки">
+                                    <Border CornerRadius="16" Background="{DynamicResource ThumbBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                        <Path Data="{StaticResource IconQr}" Style="{StaticResource Icon}" Width="15" Height="15" Fill="{DynamicResource TealDeepBrush}"/>
+                                    </Border>
+                                </Button>
+                                <Button Grid.Column="2" Style="{StaticResource BareButton}" Command="{Binding CopyReferralLinkCommand}" VerticalAlignment="Center">
                                     <controls:PillBorder Height="32" Padding="12,0" Background="{DynamicResource AccentGradientBrush}">
                                         <TextBlock Text="Копировать" FontWeight="Bold" FontSize="11.5" Foreground="White" VerticalAlignment="Center"/>
                                     </controls:PillBorder>
