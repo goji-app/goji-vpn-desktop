@@ -50,5 +50,8 @@ public sealed partial class ShellViewModel : ObservableObject
         if (value == 1) _ = Servers.AutoPingAsync();
         if (value == 2) _ = Plans.LoadAsync();
         if (value == 3) Settings.Load();
+        // Подэкран Настроек (пинг/журнал) не переживает уход с вкладки — вернувшись,
+        // пользователь видит сам список настроек, как после "назад" в Android.
+        else Settings.Page = SettingsPage.Main;
     }
 }

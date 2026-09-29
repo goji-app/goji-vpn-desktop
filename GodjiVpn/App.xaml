@@ -82,6 +82,7 @@
                 <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}"/>
                 <Setter Property="BorderThickness" Value="1.5"/>
                 <Setter Property="Padding" Value="12,10"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
                 <Setter Property="FontSize" Value="14"/>
                 <Setter Property="Template">
                     <Setter.Value>
@@ -90,7 +91,7 @@
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     CornerRadius="12">
-                                <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+                                <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                             </Border>
                         </ControlTemplate>
                     </Setter.Value>

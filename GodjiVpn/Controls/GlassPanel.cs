@@ -157,8 +157,13 @@ public class GlassPanel : Decorator
             Child.Arrange(inner);
             if (ClipContent)
             {
+                // Clip задаётся в координатах ребёнка, а они сдвинуты не только на Padding, но
+                // и на его собственный Margin/выравнивание — иначе скругление срезало бы угол
+                // содержимого (первую букву заголовка у карточки с <StackPanel Margin="14,13">).
+                // Итоговый сдвиг известен сразу после Arrange.
                 var r = EffectiveRadius(arrangeSize);
-                Child.Clip = new RectangleGeometry(new Rect(-p.Left, -p.Top, arrangeSize.Width, arrangeSize.Height), r, r);
+                var off = VisualTreeHelper.GetOffset(Child);
+                Child.Clip = new RectangleGeometry(new Rect(-off.X, -off.Y, arrangeSize.Width, arrangeSize.Height), r, r);
             }
             else
             {

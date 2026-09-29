@@ -32,6 +32,10 @@ public sealed partial class ThemeModeItem : ObservableObject
     [ObservableProperty] private bool isSelected;
 }
 
+/// <summary>Подэкраны Настроек — в Android это отдельные маршруты навигации
+/// (PingSettingsScreen, LogViewerDialog); здесь — подмена содержимого вкладки.</summary>
+public enum SettingsPage { Main, Ping, Log }
+
 /// <summary>Аналог SettingsScreen.kt — версия/HWID (About), просмотр логов вместо отдельного
 /// LogViewerDialog.kt (здесь один экран проще нескольких диалогов на маленьком приложении),
 /// тёмная тема, выход из аккаунта. Переключение языка не перенесено — языковой слой (i18n) в
@@ -50,22 +54,76 @@ public sealed partial class SettingsViewModel : ObservableObject
     private static string LogsDir => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GodjiVpn", "logs");
 
-    [ObservableProperty] private string appVersion = "—";
-    [ObservableProperty] private string hwid = "—";
-    [ObservableProperty] private LogFileItem selectedLogFile;
-    [ObservableProperty] private string logContent = "";
-    [ObservableProperty] private string pingTestUrl = "";
+    /// <summary>Версия встроенного xray.exe (Assets/xray) — строка "Версия XRAY" в
+    /// "О программе", как BUNDLED_XRAY_VERSION в Android.</summary>
+    public const string BundledXrayVersion = "26.3.27";
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasAvailableUpdate))]
+    [NotifyPropertyChangedFor(nameof(UpdateIdleText))]
+    private string appVersion = "—";
+    [ObservableProperty] private string hwid = "—";
+    [ObservableProperty] private string deviceInfo = "—";
+    public string XrayVersion => BundledXrayVersion;
+    [ObservableProperty] private LogFileItem selectedLogFile;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLogEmpty))]
+    private string logContent = "";
+    [ObservableProperty] private string pingTestUrl = "";
+    [ObservableProperty] private string? copiedToast;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsMainPage), nameof(IsPingPage), nameof(IsLogPage))]
+    private SettingsPage page = SettingsPage.Main;
+
+    public bool IsMainPage => Page == SettingsPage.Main;
+    public bool IsPingPage => Page == SettingsPage.Ping;
+    public bool IsLogPage => Page == SettingsPage.Log;
+    public bool IsLogEmpty => string.IsNullOrWhiteSpace(LogContent);
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAvailableUpdate), nameof(ShowUpdateAvailable), nameof(ShowUpdateChecking),
+        nameof(ShowUpdateIdle), nameof(HasUpdateChangelog))]
     private UpdateInfo? availableUpdate;
     [ObservableProperty] private FlowDocument updateChangelogDocument = new();
-    [ObservableProperty] private bool isCheckingUpdate;
-    [ObservableProperty] private bool isDownloadingUpdate;
-    [ObservableProperty] private double downloadProgress;
-    [ObservableProperty] private string? updateCheckMessage;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowUpdateChecking), nameof(ShowUpdateIdle))]
+    private bool isCheckingUpdate;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowUpdateAvailable), nameof(ShowUpdateChecking), nameof(ShowUpdateIdle))]
+    private bool isDownloadingUpdate;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DownloadPercentLabel))]
+    private double downloadProgress;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UpdateIdleText))]
+    private string? updateCheckMessage;
 
     public bool HasAvailableUpdate => AvailableUpdate != null;
+    public bool HasUpdateChangelog => !string.IsNullOrWhiteSpace(AvailableUpdate?.Changelog);
+
+    /// <summary>Состояния блока "Обновления" по эталону (UpdateSectionContent): загрузка →
+    /// найдено → проверка → покой. В каждый момент видно ровно одно.</summary>
+    public bool ShowUpdateAvailable => !IsDownloadingUpdate && HasAvailableUpdate;
+    public bool ShowUpdateChecking => !IsDownloadingUpdate && !HasAvailableUpdate && IsCheckingUpdate;
+    public bool ShowUpdateIdle => !IsDownloadingUpdate && !HasAvailableUpdate && !IsCheckingUpdate;
+    public string UpdateIdleText => UpdateCheckMessage ?? $"Версия {AppVersion}";
+    public string DownloadPercentLabel => $"{(int)Math.Round(DownloadProgress * 100)}%";
+
+    /// <summary>Индекс для сегмент-контрола темы (Светлая/Тёмная/Системная).</summary>
+    public int ThemeIndex
+    {
+        get
+        {
+            for (var i = 0; i < ThemeModes.Count; i++)
+                if (ThemeModes[i].Mode == _theme.Mode) return i;
+            return 0;
+        }
+        set
+        {
+            if (value < 0 || value >= ThemeModes.Count || ThemeModes[value].Mode == _theme.Mode) return;
+            SelectThemeMode(ThemeModes[value]);
+        }
+    }
 
     public ObservableCollection<LogFileItem> LogFiles { get; } = new()
     {
@@ -119,6 +177,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         foreach (var m in ThemeModes) m.IsSelected = m == item;
         _theme.SetMode(item.Mode);
+        OnPropertyChanged(nameof(ThemeIndex));
     }
 
     public void Load()
@@ -126,7 +185,18 @@ public sealed partial class SettingsViewModel : ObservableObject
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         AppVersion = version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "—";
         Hwid = _hwid.Get();
+        DeviceInfo = BuildDeviceInfo();
         RefreshLog();
+    }
+
+    /// <summary>"Об устройстве" — аналог "MANUFACTURER MODEL, Android RELEASE": имя
+    /// компьютера и версия Windows. Environment.OSVersion у Windows 11 по-прежнему 10.0,
+    /// поэтому 11 определяем по номеру сборки (от 22000).</summary>
+    private static string BuildDeviceInfo()
+    {
+        var v = Environment.OSVersion.Version;
+        var name = v.Major == 10 && v.Build >= 22000 ? "Windows 11" : $"Windows {v.Major}.{v.Minor}";
+        return $"{Environment.MachineName}, {name} ({v.Build})";
     }
 
     [RelayCommand]
@@ -134,6 +204,30 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         foreach (var m in PingMethods) m.IsSelected = m == item;
         _pingSettings.Method = item.Method;
+    }
+
+    [RelayCommand]
+    private void OpenPingSettings() => Page = SettingsPage.Ping;
+
+    [RelayCommand]
+    private void OpenLog(LogFileItem item)
+    {
+        SelectLogFile(item);
+        Page = SettingsPage.Log;
+    }
+
+    [RelayCommand]
+    private void Back() => Page = SettingsPage.Main;
+
+    /// <summary>Строки "О программе" копируются по нажатию (AboutRow в Android).</summary>
+    [RelayCommand]
+    private async Task CopyAboutAsync(string? value)
+    {
+        if (string.IsNullOrEmpty(value) || value == "—") return;
+        try { Clipboard.SetText(value); } catch { return; }
+        CopiedToast = "Скопировано";
+        await Task.Delay(1600);
+        CopiedToast = null;
     }
 
     partial void OnPingTestUrlChanged(string value) => _pingSettings.TestUrl = value;
@@ -152,7 +246,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         var path = Path.Combine(LogsDir, SelectedLogFile.FileName);
         try
         {
-            if (!File.Exists(path)) { LogContent = "(пока пусто — журнал появится после первого запуска этого компонента)"; return; }
+            if (!File.Exists(path)) { LogContent = ""; return; }
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             const int maxChars = 20000;
             var length = (int)Math.Min(stream.Length, maxChars);
@@ -167,7 +261,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CopyLog() => Clipboard.SetText(LogContent);
+    private void CopyLog()
+    {
+        if (string.IsNullOrEmpty(LogContent)) return;
+        try { Clipboard.SetText(LogContent); } catch { /* буфер занят другим процессом */ }
+    }
 
     [RelayCommand]
     private void CopyHwid() => Clipboard.SetText(Hwid);
@@ -211,7 +309,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             var update = await _updateService.CheckForUpdateAsync();
             ApplyBackgroundUpdateCheck(update);
-            UpdateCheckMessage = update == null ? $"У вас последняя версия ({AppVersion})" : null;
+            UpdateCheckMessage = update == null ? "У вас установлена последняя версия" : null;
         }
         catch
         {

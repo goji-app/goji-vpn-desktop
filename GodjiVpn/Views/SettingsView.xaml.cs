@@ -1,6 +1,4 @@
 using System.Windows.Controls;
-using System.Windows.Input;
-using GodjiVpn.ViewModels;
 
 namespace GodjiVpn.Views;
 
@@ -8,8 +6,10 @@ public partial class SettingsView : UserControl
 {
     public SettingsView() => InitializeComponent();
 
-    private void OnSupportClick(object sender, MouseButtonEventArgs e)
+    /// <summary>Журнал открывается на последних строках — свежие события внизу, как в
+    /// LogViewerDialog (Android).</summary>
+    private void OnLogTextChanged(object sender, TextChangedEventArgs e)
     {
-        if (DataContext is SettingsViewModel vm) vm.OpenSupportCommand.Execute(null);
+        if (sender is TextBox box) box.ScrollToEnd();
     }
 }
