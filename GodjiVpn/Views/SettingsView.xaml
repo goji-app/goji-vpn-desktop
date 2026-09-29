@@ -106,6 +106,98 @@
                             Command="{Binding OpenPingSettingsCommand}"/>
                 </controls:GlassPanel>
 
+                <!-- Безопасность: проверка утечек IP/DNS с итоговым вердиктом (NetworkDiagnostics). -->
+                <TextBlock Text="БЕЗОПАСНОСТЬ" Style="{StaticResource SectionLabel}" Margin="8,16,8,0"/>
+                <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,8,0,0">
+                    <StackPanel Margin="14,13">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Проверка утечек" Style="{StaticResource RowTitle}"/>
+                                <TextBlock Text="Идут ли IP и DNS-запросы через VPN" Style="{StaticResource RowSubtitle}"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Style="{StaticResource ChipButton}" Margin="12,0,0,0" Command="{Binding CheckLeakCommand}"
+                                    AutomationProperties.Name="Проверить утечки">
+                                <Grid>
+                                    <TextBlock Text="Проверить" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TealDeepBrush}" Visibility="{Binding LeakChecking, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                                    <StackPanel Orientation="Horizontal" Visibility="{Binding LeakChecking, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <controls:Spinner Foreground="{DynamicResource TealBrush}" Width="13" Height="13" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Проверяем…" Margin="7,0,0,0" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TealDeepBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+                        </Grid>
+
+                        <StackPanel Visibility="{Binding HasLeakReport, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Border CornerRadius="18" Padding="12,11" Margin="0,12,0,0">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="{DynamicResource TerracottaTintBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding LeakOk}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource TealTintBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Center">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource TerracottaBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding LeakOk}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource TealBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Path Width="15" Height="15" Fill="White">
+                                            <Path.Style>
+                                                <Style TargetType="Path" BasedOn="{StaticResource Icon}">
+                                                    <Setter Property="Data" Value="{StaticResource IconPriorityHigh}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding LeakOk}" Value="True">
+                                                            <Setter Property="Data" Value="{StaticResource IconCheck}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Path.Style>
+                                        </Path>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding LeakTitle}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding LeakDesc}" FontWeight="Medium" FontSize="11.5" LineHeight="16" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <Grid Margin="0,12,0,0" Visibility="{Binding LeakSiteIp, Converter={StaticResource NullToVisibilityConverter}}">
+                                <TextBlock Text="IP для сайтов" FontWeight="Medium" FontSize="12.5" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding LeakSiteIp}" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}"
+                                           HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" Margin="110,0,0,0"/>
+                            </Grid>
+                            <Grid Margin="0,10,0,0" Visibility="{Binding LeakRealIp, Converter={StaticResource NullToVisibilityConverter}}">
+                                <TextBlock Text="Настоящий IP" FontWeight="Medium" FontSize="12.5" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding LeakRealIp}" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}"
+                                           HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" Margin="110,0,0,0"/>
+                            </Grid>
+                            <Grid Margin="0,10,0,0" Visibility="{Binding LeakDns, Converter={StaticResource NullToVisibilityConverter}}">
+                                <TextBlock Text="DNS-резолвер" FontWeight="Medium" FontSize="12.5" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding LeakDns}" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}"
+                                           HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" Margin="110,0,0,0"/>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </controls:GlassPanel>
+
                 <TextBlock Text="ПОДДЕРЖКА" Style="{StaticResource SectionLabel}" Margin="8,16,8,0"/>
                 <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,8,0,0">
                     <Button Style="{StaticResource LinkRowButton}" Content="Написать в поддержку" Tag="Обращения и переписка прямо в приложении"

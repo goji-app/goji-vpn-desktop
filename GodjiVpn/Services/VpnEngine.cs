@@ -60,6 +60,9 @@ public sealed class VpnEngine : INotifyPropertyChanged
     private StreamWriter? _singBoxLog;
     private StreamWriter? _engineLog;
 
+    /// <summary>Запись в engine.log из других сервисов (проверка утечек и т.п.).</summary>
+    public static void Log(string message) => Current?.LogEngine(message);
+
     private void LogEngine(string message)
     {
         try

@@ -71,6 +71,63 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string pingTestUrl = "";
     [ObservableProperty] private string? copiedToast;
 
+    // ── Безопасность: проверка утечек (NetworkDiagnostics, порт 72a382d) ──
+    private readonly NetworkDiagnostics _diagnostics = new();
+    [ObservableProperty] private bool leakChecking;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLeakReport), nameof(LeakOk), nameof(LeakTitle), nameof(LeakDesc),
+        nameof(LeakSiteIp), nameof(LeakRealIp), nameof(LeakDns))]
+    private NetworkDiagnostics.Report? leakReport;
+
+    public bool HasLeakReport => LeakReport != null && !LeakChecking;
+    public bool LeakOk => LeakReport?.Verdict == NetworkDiagnostics.Verdict.Safe;
+    public string LeakTitle => LeakReport?.Verdict switch
+    {
+        NetworkDiagnostics.Verdict.Safe => "Всё защищено",
+        NetworkDiagnostics.Verdict.Leak => "Найдена утечка",
+        NetworkDiagnostics.Verdict.VpnOff => "VPN выключен",
+        _ => "Не удалось проверить"
+    };
+    public string LeakDesc
+    {
+        get
+        {
+            if (LeakReport is not { } r) return "";
+            return r.Verdict switch
+            {
+                NetworkDiagnostics.Verdict.Safe => "Сайты видят IP сервера VPN, DNS-запросы тоже идут через туннель.",
+                NetworkDiagnostics.Verdict.VpnOff => "Сайты и провайдер видят твой настоящий IP. Включи VPN и проверь ещё раз.",
+                NetworkDiagnostics.Verdict.Error => "Через туннель не пришёл ответ. Проверь соединение и попробуй ещё раз.",
+                _ => string.Join(" ", new[]
+                {
+                    r.IpLeak ? "Сайты видят твой настоящий IP." : null,
+                    !r.DnsLeak ? null : r.DnsViaIsp
+                        ? "DNS-запросы идут через твоего провайдера" + (r.Dns?.Isp is { } isp ? $" ({isp})" : "") + " — он видит, какие сайты ты открываешь."
+                        : "DNS-запросы разрешает сервер в твоей стране" + (r.Dns?.Isp is { } res ? $" ({res})" : "") + ", а не на стороне VPN — по ним видно, какие сайты ты открываешь."
+                }.Where(x => x != null))
+            };
+        }
+    }
+    public string? LeakSiteIp => LeakReport?.VpnIp is { } v ? Join(v.Ip, v.Country) : null;
+    public string? LeakRealIp => LeakReport?.RealIp is { } v ? Join(v.Ip, v.Country) : null;
+    public string? LeakDns => LeakReport?.Dns is { } d ? (Join(d.Isp, d.Country) is { Length: > 0 } s ? s : d.Ip) : null;
+
+    private static string Join(params string?[] parts) => string.Join(" · ", parts.Where(p => !string.IsNullOrWhiteSpace(p)));
+
+    partial void OnLeakCheckingChanged(bool value) => OnPropertyChanged(nameof(HasLeakReport));
+
+    // AllowConcurrentExecutions: повтор отсекает LeakChecking, а кнопка во время проверки не
+    // тускнеет как выключенная — в ней крутится спиннер "Проверяем…".
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    private async Task CheckLeakAsync()
+    {
+        if (LeakChecking) return;
+        LeakChecking = true;
+        try { LeakReport = await _diagnostics.CheckAsync(); }
+        catch { LeakReport = new NetworkDiagnostics.Report(NetworkDiagnostics.Verdict.Error, null, null, null, false, false, false); }
+        finally { LeakChecking = false; }
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsMainPage), nameof(IsPingPage), nameof(IsLogPage))]
     private SettingsPage page = SettingsPage.Main;
