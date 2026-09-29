@@ -167,9 +167,17 @@ public sealed class SubscriptionService
                 var remark = profile["remarks"]?.GetValue<string>();
                 remark = string.IsNullOrWhiteSpace(remark) ? $"Сервер {index + 1}" : remark;
 
+                // ID узла НЕ позиция в массиве (порт Android cebcb0a): выбранный узел и избранное
+                // хранятся по ID между запусками, и любое изменение состава/порядка профилей на
+                // бэкенде раньше молча перескакивало на другой сервер. "имя|хост:порт" стабилен;
+                // на случай полных дублей добавляем порядковый суффикс.
+                var id = $"{remark}|{host}:{port}";
+                var dup = 2;
+                while (result.Any(n => n.Id == id)) id = $"{remark}|{host}:{port}#{dup++}";
+
                 result.Add(new VlessNode
                 {
-                    Id = index.ToString(),
+                    Id = id,
                     Name = remark,
                     Host = host,
                     Port = port,

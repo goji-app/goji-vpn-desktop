@@ -138,6 +138,7 @@ public sealed partial class ServersViewModel : ObservableObject
 
     private void SyncFromRepository()
     {
+        _favorites.MigrateLegacyIds(_subscription.Nodes.Where(n => !n.Id.StartsWith("custom-", StringComparison.Ordinal)).ToList());
         var selectedId = _subscription.SelectedId;
         var existingById = Nodes.ToDictionary(n => n.Node.Id);
         var newNodes = new List<NodeItem>();

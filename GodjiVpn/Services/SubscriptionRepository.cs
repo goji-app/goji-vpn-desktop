@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using GodjiVpn.Models;
 
 namespace GodjiVpn.Services;
@@ -30,11 +31,44 @@ public sealed class SubscriptionRepository : INotifyPropertyChanged
     /// как читали Nodes/SelectedNode отсюда, так и продолжают, просто набор пополнился.</summary>
     public IReadOnlyList<VlessNode> Nodes => _subscriptionNodes.Concat(_customNodes.Nodes).ToList();
 
-    private string? _selectedId;
+    private static string SelectedPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GodjiVpn", "selected-node.txt");
+
+    /// <summary>Выбранный узел переживает перезапуск (как NodeListCache в Android) — раньше после
+    /// каждого запуска выбирался первый узел подписки, а не тот, что пользователь выбрал сам.</summary>
+    private string? _selectedId = LoadSelectedId();
     public string? SelectedId
     {
         get => _selectedId;
-        set { _selectedId = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedId))); }
+        set
+        {
+            _selectedId = value;
+            SaveSelectedId(value);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedId)));
+        }
+    }
+
+    private static string? LoadSelectedId()
+    {
+        try
+        {
+            if (!File.Exists(SelectedPath)) return null;
+            var id = File.ReadAllText(SelectedPath).Trim();
+            // Старый формат ID — позиция в массиве ("0", "1"…) — больше ничего не значит.
+            return id.Length == 0 || id.All(char.IsDigit) ? null : id;
+        }
+        catch { return null; }
+    }
+
+    private static void SaveSelectedId(string? id)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(SelectedPath)!);
+            if (id == null) File.Delete(SelectedPath);
+            else File.WriteAllText(SelectedPath, id);
+        }
+        catch { /* лучшее усилие — максимум при следующем запуске выберется первый узел */ }
     }
 
     /// <summary>Причина, по которой RefreshAsync() в последний раз вернул false — раньше все
