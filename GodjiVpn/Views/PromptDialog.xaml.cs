@@ -12,7 +12,7 @@ public partial class PromptDialog : Window
     public string PromptTitle
     {
         get => TitleBlock.Text;
-        set => TitleBlock.Text = value;
+        set { TitleBlock.Text = value; Title = value; }
     }
 
     public string? Message
@@ -57,8 +57,8 @@ public partial class PromptDialog : Window
     public bool IsPrimaryDanger
     {
         set => PrimaryBtn.Style = value
-            ? (Style)Application.Current.Resources["DangerButton"]
-            : (Style)Application.Current.Resources["InkButton"];
+            ? (Style)Resources["DangerPillButton"]
+            : (Style)Application.Current.Resources["InkPillButton"];
     }
 
     public PromptDialog()
