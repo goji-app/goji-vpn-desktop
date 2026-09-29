@@ -158,9 +158,8 @@ public partial class OtpInput : UserControl
             cell.BorderBrush = HasError
                 ? ResourceBrush("DangerBrush")
                 : isActive ? ResourceBrush("TealBrush")
-                : filled ? ResourceBrush("TealDeepBrush")
                 : ResourceBrush("CardBorderBrush");
-            cell.BorderThickness = new Thickness(isActive || filled ? 1.8 : 1.3);
+            cell.BorderThickness = new Thickness(isActive || HasError ? 1.5 : 1);
         }
     }
 

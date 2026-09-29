@@ -23,6 +23,23 @@ public sealed partial class MainViewModel : ObservableObject
         _shell.LoggedOut += OnLoggedOut;
 
         currentViewModel = _tokenStore.IsLoggedIn ? _shell : _login;
+
+        // Только для превью-экземпляра (GODJI_UI_PREVIEW, см. App.xaml.cs): показать экран
+        // входа/подтверждения кода для сверки с эталоном, не трогая сохранённую сессию.
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW") == "1")
+        {
+            switch (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_SCREEN"))
+            {
+                case "login":
+                    currentViewModel = _login;
+                    break;
+                case "verify":
+                    _login.Email = "you@mail.ru";
+                    _login.OtpSent = true;
+                    currentViewModel = _login;
+                    break;
+            }
+        }
     }
 
     public async Task InitializeAsync()

@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using GodjiVpn.ViewModels;
 
 namespace GodjiVpn.Views;
@@ -11,7 +10,12 @@ public partial class LoginView : UserControl
     public LoginView()
     {
         InitializeComponent();
-        Loaded += async (_, _) => await Globe.SetStatusAsync("off");
+        Loaded += async (_, _) =>
+        {
+            // Экран кода может оказаться открыт уже при загрузке View — фокус в первую клетку.
+            if (DataContext is LoginViewModel { OtpSent: true }) Otp.FocusFirst();
+            await Globe.SetStatusAsync("off");
+        };
 
         // Автопроверка по заполнению всех 6 клеток (см. Controls/OtpInput.Completed) и
         // автофокус первой клетки, когда экран кода становится видимым — DataContext
@@ -33,11 +37,6 @@ public partial class LoginView : UserControl
     {
         if (e.PropertyName != nameof(LoginViewModel.OtpSent)) return;
         if (sender is LoginViewModel { OtpSent: true }) Dispatcher.BeginInvoke(() => Otp.FocusFirst());
-    }
-
-    private void OnBotBannerClick(object sender, MouseButtonEventArgs e)
-    {
-        if (DataContext is LoginViewModel vm) vm.OpenBotCommand.Execute(null);
     }
 
     private void OnTermsClick(object sender, RoutedEventArgs e)
