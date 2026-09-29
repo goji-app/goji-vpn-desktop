@@ -142,6 +142,21 @@ public sealed class PingService
         // Для разового замера задержки логи не нужны — тише некуда, чтобы не плодить файлы
         // на каждый пинг.
         config["log"] = new JsonObject { ["loglevel"] = "none" };
+
+        // Пока туннель поднят, системный маршрут по умолчанию идёт в TUN — без привязки к
+        // физическому интерфейсу замер шёл бы через текущий VPN-сервер ("через два сервера") и
+        // показывал бы не задержку до узла, а сумму. sendThrough — тот же приём, что у самого
+        // туннеля (VpnEngine.WriteXrayConfigAsync).
+        var engine = VpnEngine.Current;
+        if (engine?.IsRunning == true && !string.IsNullOrEmpty(engine.PhysicalIp))
+        {
+            foreach (var ob in config["outbounds"]?.AsArray() ?? new JsonArray())
+            {
+                var protocol = ob?["protocol"]?.GetValue<string>();
+                if (protocol is "vless" or "vmess" or "trojan" or "shadowsocks" or "hysteria" or "freedom")
+                    ob!["sendThrough"] = engine.PhysicalIp;
+            }
+        }
         return config.ToJsonString();
     }
 

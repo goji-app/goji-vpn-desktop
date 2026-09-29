@@ -84,6 +84,12 @@ public sealed class VpnEngine : INotifyPropertyChanged
     /// запрошенному имени.</summary>
     private string? _actualAdapterName;
 
+    /// <summary>Адрес физического интерфейса, определённый ДО переключения маршрута на TUN (см.
+    /// ConnectAttemptAsync). Нужен и пингу серверов (PingService): пока туннель поднят, его
+    /// временные xray.exe привязываются к этому адресу и меряют задержку до узла напрямую, мимо
+    /// туннеля — иначе замер шёл бы "через два сервера" (порт смысла Android 1f63522).</summary>
+    public string? PhysicalIp { get; private set; }
+
     private bool _isRunning;
     public bool IsRunning { get => _isRunning; private set => SetField(ref _isRunning, value); }
 
@@ -182,6 +188,7 @@ public sealed class VpnEngine : INotifyPropertyChanged
         // TUN — иначе этот же трюк уже вернёт адрес самого TUN-адаптера, а не реального
         // физического интерфейса. См. комментарий у sendThrough в WriteXrayConfig.
         var physicalIp = GetLocalOutboundIp();
+        PhysicalIp = physicalIp;
         LogEngine($"physical outbound IP: {physicalIp ?? "(не определён)"}");
 
         var xrayConfigPath = await WriteXrayConfigAsync(node, physicalIp).ConfigureAwait(false);
@@ -265,6 +272,7 @@ public sealed class VpnEngine : INotifyPropertyChanged
         KillProcess(ref _singBoxProcess, ref _singBoxLog, "sing-box.exe");
         KillProcess(ref _xrayProcess, ref _xrayLog, "xray.exe");
         _actualAdapterName = null;
+        PhysicalIp = null;
         IsRunning = false;
         ConnectedSinceUtc = null;
         LogEngine("Teardown: done");
