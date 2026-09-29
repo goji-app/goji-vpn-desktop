@@ -62,8 +62,21 @@ public sealed partial class ServersViewModel : ObservableObject
     private readonly PingService _pingService;
     private readonly CustomNodeStore _customNodes;
     private readonly FavoriteServersStore _favorites;
+    private readonly AppSettings _settings;
+    private static readonly System.Globalization.CultureInfo Ru = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
 
     public ObservableCollection<NodeItem> Nodes { get; } = new();
+
+    /// <summary>Режимы сортировки (порт Android 64aa106): Избранные / Пинг / А–Я.</summary>
+    public IReadOnlyList<string> SortOptions { get; } = new[] { "Избранные", "Пинг", "А–Я" };
+
+    [ObservableProperty] private int sortIndex;
+
+    partial void OnSortIndexChanged(int value)
+    {
+        _settings.ServerSort = (ServerSort)Math.Clamp(value, 0, 2);
+        ApplySort();
+    }
 
     [ObservableProperty] private bool isCheckingAll;
     [ObservableProperty] private bool isRefreshing;
@@ -78,12 +91,15 @@ public sealed partial class ServersViewModel : ObservableObject
     /// <summary>Выбор узла сразу возвращает на "Главную" — как pick() в эталоне v5.</summary>
     public event Action? ServerPicked;
 
-    public ServersViewModel(SubscriptionRepository subscription, PingService pingService, CustomNodeStore customNodes, FavoriteServersStore favorites)
+    public ServersViewModel(SubscriptionRepository subscription, PingService pingService, CustomNodeStore customNodes,
+        FavoriteServersStore favorites, AppSettings settings)
     {
         _subscription = subscription;
         _pingService = pingService;
         _customNodes = customNodes;
         _favorites = favorites;
+        _settings = settings;
+        sortIndex = (int)settings.ServerSort;
         _subscription.PropertyChanged += (_, _) => RunOnUiThread(SyncFromRepository);
         _favorites.Changed += () => RunOnUiThread(SyncFromRepository);
         SyncFromRepository();
@@ -142,10 +158,7 @@ public sealed partial class ServersViewModel : ObservableObject
         var selectedId = _subscription.SelectedId;
         var existingById = Nodes.ToDictionary(n => n.Node.Id);
         var newNodes = new List<NodeItem>();
-        // Избранные закреплены сверху (стабильная сортировка — OrderByDescending в .NET
-        // гарантированно стабилен, порядок внутри "избранное"/"не избранное" не меняется),
-        // порт из Android (ServersViewModel.state: sortedByDescending { it.isFavorite }).
-        foreach (var node in _subscription.Nodes.OrderByDescending(n => _favorites.IsFavorite(n.Id)))
+        foreach (var node in _subscription.Nodes)
         {
             var item = existingById.TryGetValue(node.Id, out var previous)
                 ? new NodeItem { Node = node, IsSelected = node.Id == selectedId, PingMs = previous.PingMs }
@@ -154,7 +167,30 @@ public sealed partial class ServersViewModel : ObservableObject
             newNodes.Add(item);
         }
         Nodes.Clear();
-        foreach (var item in newNodes) Nodes.Add(item);
+        foreach (var item in Sorted(newNodes)) Nodes.Add(item);
+    }
+
+    /// <summary>Сортировки стабильные: при равенстве остаётся порядок подписки. Избранные идут
+    /// первыми только в режиме "Избранные"; в остальных — строго по ключу (как в Android).</summary>
+    private IEnumerable<NodeItem> Sorted(IEnumerable<NodeItem> items) => (ServerSort)SortIndex switch
+    {
+        ServerSort.Ping => items
+            .OrderBy(n => n.PingMs >= 0 ? 0 : n.PingMs == -2 ? 1 : 2)
+            .ThenBy(n => n.PingMs >= 0 ? n.PingMs : int.MaxValue),
+        ServerSort.Name => items.OrderBy(n => n.DisplayName, StringComparer.Create(Ru, ignoreCase: true)),
+        _ => items.OrderByDescending(n => n.IsFavorite)
+    };
+
+    /// <summary>Переставляет уже существующие строки без пересоздания — пинги и подсветка
+    /// выбранного узла не сбрасываются при смене сортировки или приходе нового замера.</summary>
+    private void ApplySort()
+    {
+        var target = Sorted(Nodes.ToList()).ToList();
+        for (var i = 0; i < target.Count; i++)
+        {
+            var current = Nodes.IndexOf(target[i]);
+            if (current != i) Nodes.Move(current, i);
+        }
     }
 
     private static void RunOnUiThread(Action action)
@@ -178,6 +214,7 @@ public sealed partial class ServersViewModel : ObservableObject
         item.IsChecking = true;
         item.PingMs = await _pingService.MeasureAsync(item.Node);
         item.IsChecking = false;
+        if ((ServerSort)SortIndex == ServerSort.Ping) ApplySort();
     }
 
     [RelayCommand]
@@ -192,5 +229,6 @@ public sealed partial class ServersViewModel : ObservableObject
         });
         await Task.WhenAll(tasks);
         IsCheckingAll = false;
+        if ((ServerSort)SortIndex == ServerSort.Ping) ApplySort();
     }
 }

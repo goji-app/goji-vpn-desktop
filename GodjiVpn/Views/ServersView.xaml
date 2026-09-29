@@ -47,6 +47,10 @@
                 </StackPanel>
             </Grid>
 
+            <!-- Сортировка (Android 64aa106): тот же сегмент-контрол, что "Язык" в Настройках, ниже — 32. -->
+            <controls:SegmentedControl ItemsSource="{Binding SortOptions}" SelectedIndex="{Binding SortIndex}"
+                                       ItemHeight="32" LabelFontSize="12" Margin="0,12,0,0"/>
+
             <!-- Баннер-результат ручного "Обновить": круг 24 с галочкой/!, текст 12, крестик 22. -->
             <controls:GlassPanel CornerRadius="20" Padding="13,11" Margin="0,12,0,0"
                                  Visibility="{Binding RefreshResultMessage, Converter={StaticResource NullToVisibilityConverter}}">
