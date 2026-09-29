@@ -217,9 +217,22 @@ public sealed partial class ServersViewModel : ObservableObject
         if ((ServerSort)SortIndex == ServerSort.Ping) ApplySort();
     }
 
+    private DateTime _lastAutoPingUtc = DateTime.MinValue;
+
+    /// <summary>Авто-пинг при каждом открытии вкладки (Android: LaunchedEffect в ServersScreen) —
+    /// раньше выбор узла шёл вслепую, пока не нажмёшь "Пинг". Не накладывается на уже идущую
+    /// проверку и не повторяется чаще раза в 20 с при быстром переключении вкладок.</summary>
+    public async Task AutoPingAsync()
+    {
+        if (IsCheckingAll || DateTime.UtcNow - _lastAutoPingUtc < TimeSpan.FromSeconds(20)) return;
+        await PingAllCommand.ExecuteAsync(null);
+    }
+
     [RelayCommand]
     private async Task PingAllAsync()
     {
+        if (IsCheckingAll) return;
+        _lastAutoPingUtc = DateTime.UtcNow;
         IsCheckingAll = true;
         var tasks = Nodes.Select(async item =>
         {

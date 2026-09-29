@@ -47,6 +47,7 @@ public sealed partial class ShellViewModel : ObservableObject
         // открывший её пользователь мог смотреть устаревшие/пустые данные, если до этого
         // ни разу не жал "обновить". См. также LoadAsync — автообновление при самом
         // старте приложения.
+        if (value == 1) _ = Servers.AutoPingAsync();
         if (value == 2) _ = Plans.LoadAsync();
         if (value == 3) Settings.Load();
     }
