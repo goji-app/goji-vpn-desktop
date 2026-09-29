@@ -40,7 +40,7 @@ public sealed class BypassDomainItem
 
 /// <summary>Подэкраны Настроек — в Android это отдельные маршруты навигации
 /// (PingSettingsScreen, LogViewerDialog); здесь — подмена содержимого вкладки.</summary>
-public enum SettingsPage { Main, Ping, Log, Bypass }
+public enum SettingsPage { Main, Ping, Log, Bypass, Wifi }
 
 /// <summary>Аналог SettingsScreen.kt — версия/HWID (About), просмотр логов вместо отдельного
 /// LogViewerDialog.kt (здесь один экран проще нескольких диалогов на маленьком приложении),
@@ -57,6 +57,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly UpdateService _updateService;
     private readonly ApiClient _api;
     private readonly AppSettings _appSettings;
+    private readonly NetworkRulesManager _networkRules;
 
     private static string LogsDir => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GodjiVpn", "logs");
@@ -136,13 +137,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsMainPage), nameof(IsPingPage), nameof(IsLogPage), nameof(IsBypassPage))]
+    [NotifyPropertyChangedFor(nameof(IsMainPage), nameof(IsPingPage), nameof(IsLogPage), nameof(IsBypassPage), nameof(IsWifiPage))]
     private SettingsPage page = SettingsPage.Main;
 
     public bool IsMainPage => Page == SettingsPage.Main;
     public bool IsPingPage => Page == SettingsPage.Ping;
     public bool IsLogPage => Page == SettingsPage.Log;
     public bool IsBypassPage => Page == SettingsPage.Bypass;
+    public bool IsWifiPage => Page == SettingsPage.Wifi;
     public bool IsLogEmpty => string.IsNullOrWhiteSpace(LogContent);
 
     [ObservableProperty]
@@ -221,9 +223,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     public event Action? RequestLogout;
 
     public SettingsViewModel(TokenStore tokenStore, VpnEngine vpnEngine, HwidProvider hwid, PingSettings pingSettings,
-        ThemeService theme, UpdateService updateService, ApiClient api, AppSettings appSettings)
+        ThemeService theme, UpdateService updateService, ApiClient api, AppSettings appSettings, NetworkRulesManager networkRules)
     {
         _appSettings = appSettings;
+        _networkRules = networkRules;
+        networkRules.Changed += () => Application.Current?.Dispatcher.BeginInvoke(RefreshWifi);
+        // Вернувшись из системных настроек геолокации, пользователь сразу видит имя сети.
+        if (Application.Current != null)
+            Application.Current.Activated += (_, _) => { if (IsWifiPage) _networkRules.Refresh(); };
         _tokenStore = tokenStore;
         _vpnEngine = vpnEngine;
         _hwid = hwid;
@@ -284,6 +291,76 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     [RelayCommand]
     private void Back() => Page = SettingsPage.Main;
+
+    // ── Правила Wi-Fi (порт ee03f58, см. NetworkRulesManager) ──
+    public ObservableCollection<string> TrustedSsids { get; } = new();
+    public bool TrustedEmpty => TrustedSsids.Count == 0;
+
+    public bool WifiAutoConnect
+    {
+        get => _appSettings.WifiAutoConnect;
+        set { _appSettings.WifiAutoConnect = value; OnPropertyChanged(); }
+    }
+
+    public bool WifiDisconnectTrusted
+    {
+        get => _appSettings.WifiDisconnectTrusted;
+        set { _appSettings.WifiDisconnectTrusted = value; OnPropertyChanged(); }
+    }
+
+    private string? Ssid => _networkRules.CurrentSsid;
+    private bool SsidTrusted => !string.IsNullOrEmpty(Ssid) && _appSettings.TrustedSsids.Contains(Ssid);
+    public string CurrentSsidTitle => Ssid switch { null => "Сейчас не Wi-Fi", "" => "Имя сети скрыто", _ => Ssid };
+    public string? CurrentSsidSubtitle => Ssid switch
+    {
+        null => null,
+        "" => "Windows показывает имя Wi-Fi только с доступом приложений к геолокации",
+        _ => SsidTrusted ? "Доверенная сеть" : "Чужая сеть"
+    };
+    public bool ShowTrustButton => !string.IsNullOrEmpty(Ssid) && !SsidTrusted;
+    public bool ShowAllowButton => Ssid == "";
+
+    [RelayCommand]
+    private void OpenWifiRules()
+    {
+        RefreshWifi();
+        _networkRules.Refresh();
+        Page = SettingsPage.Wifi;
+    }
+
+    [RelayCommand]
+    private void TrustCurrent()
+    {
+        if (string.IsNullOrEmpty(Ssid)) return;
+        _appSettings.AddTrustedSsid(Ssid);
+        RefreshWifi();
+    }
+
+    [RelayCommand]
+    private void RemoveTrusted(string ssid)
+    {
+        _appSettings.RemoveTrustedSsid(ssid);
+        RefreshWifi();
+    }
+
+    [RelayCommand]
+    private void AllowLocation()
+    {
+        // Системная страница "Конфиденциальность → Расположение" (фиксированный URI, не с бэкенда).
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:privacy-location") { UseShellExecute = true }); }
+        catch { /* нет обработчика ms-settings — редкая урезанная сборка Windows */ }
+    }
+
+    private void RefreshWifi()
+    {
+        TrustedSsids.Clear();
+        foreach (var s in _appSettings.TrustedSsids) TrustedSsids.Add(s);
+        OnPropertyChanged(nameof(TrustedEmpty));
+        OnPropertyChanged(nameof(CurrentSsidTitle));
+        OnPropertyChanged(nameof(CurrentSsidSubtitle));
+        OnPropertyChanged(nameof(ShowTrustButton));
+        OnPropertyChanged(nameof(ShowAllowButton));
+    }
 
     // ── Сайты мимо VPN (порт 6803326) ──
     public ObservableCollection<BypassDomainItem> BypassDomains { get; } = new();

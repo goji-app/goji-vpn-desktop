@@ -202,6 +202,9 @@
                 <TextBlock Text="ПОДКЛЮЧЕНИЕ" Style="{StaticResource SectionLabel}" Margin="8,16,8,0"/>
                 <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,8,0,0">
                     <StackPanel>
+                        <Button Style="{StaticResource LinkRowButton}" Content="Правила Wi-Fi" Tag="Доверенные сети и автовключение в чужих"
+                                Command="{Binding OpenWifiRulesCommand}"/>
+                        <Rectangle Style="{StaticResource Hair}"/>
                         <Button Style="{StaticResource LinkRowButton}" Content="Сайты мимо VPN" Tag="Домены, которые открываются напрямую"
                                 Command="{Binding OpenBypassCommand}"/>
                     </StackPanel>
@@ -373,6 +376,119 @@
                                  Text="{Binding PingTestUrl, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                 </controls:GlassPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ═══ Подэкран: Правила Wi-Fi ═══ -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding IsWifiPage, Converter={StaticResource BoolToVisibilityConverter}}">
+            <StackPanel Margin="16,16,16,12">
+                <StackPanel Orientation="Horizontal">
+                    <Button Style="{StaticResource BackButton}"/>
+                    <TextBlock Text="Правила Wi-Fi" Style="{StaticResource SubTitle}"/>
+                </StackPanel>
+
+                <TextBlock Text="АВТОМАТИЧЕСКИ" Style="{StaticResource SectionLabel}" Margin="8,14,8,0"/>
+                <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,8,0,0">
+                    <StackPanel>
+                        <Grid Margin="14,13">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Включать VPN в чужих сетях" Style="{StaticResource RowTitle}"/>
+                                <TextBlock Text="При подключении к любой Wi-Fi не из списка доверенных" Style="{StaticResource RowSubtitle}"/>
+                            </StackPanel>
+                            <ToggleButton Grid.Column="1" Style="{StaticResource GlassSwitch}" Margin="12,0,0,0"
+                                          AutomationProperties.Name="Включать VPN в чужих сетях"
+                                          IsChecked="{Binding WifiAutoConnect, Mode=TwoWay}"/>
+                        </Grid>
+                        <Rectangle Style="{StaticResource Hair}"/>
+                        <Grid Margin="14,13">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Отключать VPN в доверенных сетях" Style="{StaticResource RowTitle}"/>
+                                <TextBlock Text="Например, дома — VPN выключится сам, когда компьютер подключится к этой сети" Style="{StaticResource RowSubtitle}"/>
+                            </StackPanel>
+                            <ToggleButton Grid.Column="1" Style="{StaticResource GlassSwitch}" Margin="12,0,0,0"
+                                          AutomationProperties.Name="Отключать VPN в доверенных сетях"
+                                          IsChecked="{Binding WifiDisconnectTrusted, Mode=TwoWay}"/>
+                        </Grid>
+                    </StackPanel>
+                </controls:GlassPanel>
+
+                <TextBlock Text="ТЕКУЩАЯ СЕТЬ" Style="{StaticResource SectionLabel}" Margin="8,16,8,0"/>
+                <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,8,0,0">
+                    <Grid Margin="14,13">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="36" Height="36" CornerRadius="18" Background="{DynamicResource ChipBrush}" VerticalAlignment="Center">
+                            <Path Data="{StaticResource IconWifi}" Style="{StaticResource Icon}" Width="18" Height="18" Fill="{DynamicResource TealDeepBrush}"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding CurrentSsidTitle}" Style="{StaticResource RowTitle}" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding CurrentSsidSubtitle}" Style="{StaticResource RowSubtitle}"
+                                       Visibility="{Binding CurrentSsidSubtitle, Converter={StaticResource NullToVisibilityConverter}}"/>
+                        </StackPanel>
+                        <Grid Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <Button Style="{StaticResource ChipButton}" Content="Доверять" Command="{Binding TrustCurrentCommand}"
+                                    Visibility="{Binding ShowTrustButton, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            <Button Style="{StaticResource ChipButton}" Content="Разрешить" Command="{Binding AllowLocationCommand}"
+                                    Visibility="{Binding ShowAllowButton, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        </Grid>
+                    </Grid>
+                </controls:GlassPanel>
+
+                <TextBlock Text="ДОВЕРЕННЫЕ СЕТИ" Style="{StaticResource SectionLabel}" Margin="8,16,8,0"/>
+                <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,8,0,0">
+                    <Grid>
+                        <TextBlock Text="Пока нет. Подключись к своей сети (дом, работа) и нажми «Доверять»." FontWeight="Medium" FontSize="12"
+                                   LineHeight="17" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" Margin="14,13"
+                                   Visibility="{Binding TrustedEmpty, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        <ItemsControl ItemsSource="{Binding TrustedSsids}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <Rectangle x:Name="Sep" Style="{StaticResource Hair}"/>
+                                        <Grid Margin="14,11,10,11">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1" Style="{StaticResource BareButton}" Width="28" Height="28" Margin="12,0,0,0"
+                                                    AutomationProperties.Name="Удалить"
+                                                    Command="{Binding DataContext.RemoveTrustedCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <Border CornerRadius="14" Background="{DynamicResource HairBrush}">
+                                                    <Path Data="{StaticResource IconClose}" Style="{StaticResource Icon}" Width="12" Height="12"
+                                                          Fill="{DynamicResource TextPrimaryBrush}"/>
+                                                </Border>
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}">
+                                            <Setter TargetName="Sep" Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </controls:GlassPanel>
+
+                <TextBlock Text="Правила срабатывают при смене сети, пока приложение запущено — в том числе свёрнутым в трей."
+                           FontWeight="Medium" FontSize="11" LineHeight="15" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"
+                           Margin="8,12,8,0"/>
             </StackPanel>
         </ScrollViewer>
 

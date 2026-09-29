@@ -24,6 +24,10 @@ public sealed class AppSettings
         public ServerSort ServerSort { get; set; } = ServerSort.Favorites;
         /// <summary>"Сайты мимо VPN" — домены в ASCII (punycode), без www., с поддоменами.</summary>
         public List<string> BypassDomains { get; set; } = new();
+        /// <summary>Правила Wi-Fi (NetworkRulesManager).</summary>
+        public bool WifiAutoConnect { get; set; }
+        public bool WifiDisconnectTrusted { get; set; }
+        public List<string> TrustedSsids { get; set; } = new();
     }
 
     private readonly State _state;
@@ -39,6 +43,33 @@ public sealed class AppSettings
     }
 
     public IReadOnlyList<string> BypassDomains => _state.BypassDomains;
+
+    public bool WifiAutoConnect
+    {
+        get => _state.WifiAutoConnect;
+        set { if (_state.WifiAutoConnect == value) return; _state.WifiAutoConnect = value; Save(); }
+    }
+
+    public bool WifiDisconnectTrusted
+    {
+        get => _state.WifiDisconnectTrusted;
+        set { if (_state.WifiDisconnectTrusted == value) return; _state.WifiDisconnectTrusted = value; Save(); }
+    }
+
+    public IReadOnlyList<string> TrustedSsids => _state.TrustedSsids;
+
+    public void AddTrustedSsid(string ssid)
+    {
+        if (string.IsNullOrEmpty(ssid) || _state.TrustedSsids.Contains(ssid)) return;
+        _state.TrustedSsids.Add(ssid);
+        _state.TrustedSsids.Sort(StringComparer.CurrentCultureIgnoreCase);
+        Save();
+    }
+
+    public void RemoveTrustedSsid(string ssid)
+    {
+        if (_state.TrustedSsids.Remove(ssid)) Save();
+    }
 
     public void AddBypassDomain(string domain)
     {
