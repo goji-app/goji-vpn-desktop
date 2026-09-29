@@ -43,6 +43,10 @@ public sealed class ThemeService
     public void Initialize()
     {
         Mode = Load();
+        // Превью-экземпляр (GODJI_UI_PREVIEW, см. App.xaml.cs) может принудительно показать
+        // светлую/тёмную тему для сверки с эталоном, не трогая сохранённый выбор пользователя.
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_THEME") is "light" or "dark")
+            Mode = Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_THEME") == "dark" ? ThemeMode.Dark : ThemeMode.Light;
         IsDark = ResolveIsDark(Mode);
         Apply();
         // Пока режим Системная — следим за живой сменой темы Windows, а не только за явным

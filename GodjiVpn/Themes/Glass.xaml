@@ -373,6 +373,62 @@
         </Setter>
     </Style>
 
+    <!-- ── Полоса прокрутки ───────────────────────────────────── -->
+    <!-- Тонкая полупрозрачная капсула без стрелок и дорожки — как оверлейный скроллбар Android,
+         вместо классической серой полосы Windows, которая выбивалась бы из стекла. -->
+    <Style x:Key="GlassScrollThumb" TargetType="Thumb">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border x:Name="T" CornerRadius="3" Background="{DynamicResource TextMutedBrush}" Opacity="0.35"/>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="T" Property="Opacity" Value="0.6"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="T" Property="Opacity" Value="0.75"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Width" Value="6"/>
+        <Setter Property="MinWidth" Value="6"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Track x:Name="PART_Track" IsDirectionReversed="True" Margin="0,4">
+                        <Track.Thumb>
+                            <Thumb Style="{StaticResource GlassScrollThumb}" Margin="1,0"/>
+                        </Track.Thumb>
+                    </Track>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto"/>
+                <Setter Property="MinWidth" Value="0"/>
+                <Setter Property="Height" Value="6"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Track x:Name="PART_Track" Margin="4,0">
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource GlassScrollThumb}" Margin="0,1"/>
+                                </Track.Thumb>
+                            </Track>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <!-- ── Поля ввода v5 ──────────────────────────────────────── -->
     <!-- Поле на стекле: Chip-подложка, обводка CardBorder, при фокусе — акцентная. -->
     <Style x:Key="GlassTextBox" TargetType="TextBox">

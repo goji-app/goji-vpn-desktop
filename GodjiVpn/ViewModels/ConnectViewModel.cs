@@ -1,5 +1,6 @@
+using System.Globalization;
+using System.Net.NetworkInformation;
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -9,12 +10,14 @@ using GodjiVpn.Utils;
 namespace GodjiVpn.ViewModels;
 
 /// <summary>Аналог ConnectViewModel.kt/ConnectScreen.kt (Android) — заголовок/статус-строка,
-/// приветствие поверх глобуса, карточка текущего узла, скорость/трафик. NetworkPill
-/// (Wi-Fi/Мобильная/Глушение) и авто-переключение на резервный узел сознательно не
-/// переносятся — специфично для мобильной сети с SIM, на десктопе такого сценария нет
-/// (решение принято с пользователем).</summary>
+/// приветствие поверх глобуса, карточка текущего узла, скорость/трафик. Авто-переключение на
+/// резервный узел при глушении мобильной сети сознательно не переносится — специфично для SIM,
+/// на десктопе такого сценария нет (решение принято с пользователем). Плашка сети справа в шапке
+/// показывает тип активного подключения компьютера (Wi-Fi/Ethernet) вместо Wi-Fi/Мобильная.</summary>
 public sealed partial class ConnectViewModel : ObservableObject, IDisposable
 {
+    private static readonly CultureInfo Ru = CultureInfo.GetCultureInfo("ru-RU");
+
     private readonly VpnEngine _vpnEngine;
     private readonly SubscriptionRepository _subscription;
     private readonly DispatcherTimer _speedTimer;
@@ -22,18 +25,6 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
     private long _lastRx;
     private long _lastTx;
     private DateTime _lastSampleUtc;
-
-    // Скользящее окно последних замеров для мини-графика в карточках скорости — секунды
-    // текущей сессии, не переживает пересоздание ViewModel, что тут и не нужно. Порт из Android
-    // (ConnectViewModel.downHistory/upHistory).
-    private const int SpeedHistorySize = 30;
-    private readonly List<double> _downHistory = new();
-    private readonly List<double> _upHistory = new();
-
-    [ObservableProperty] private PointCollection downLinePoints = new();
-    [ObservableProperty] private PointCollection downFillPoints = new();
-    [ObservableProperty] private PointCollection upLinePoints = new();
-    [ObservableProperty] private PointCollection upFillPoints = new();
 
     [ObservableProperty] private bool isConnected;
     [ObservableProperty] private bool isConnecting;
@@ -60,14 +51,28 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double quotaGb;
     [ObservableProperty] private bool isUnlimited;
 
-    [ObservableProperty] private double downSpeedMbps;
-    [ObservableProperty] private double upSpeedMbps;
+    [ObservableProperty] private string trafficValueLabel = "0,0 ГБ / ∞";
+    [ObservableProperty] private string trafficExpiryLabel = "";
+    [ObservableProperty] private double trafficFraction;
+    [ObservableProperty] private bool showTrafficBar;
+
+    [ObservableProperty] private string downSpeedLabel = "0,0";
+    [ObservableProperty] private string upSpeedLabel = "0,0";
     [ObservableProperty] private string connectedTimeLabel = "00:00:00";
 
+    /// <summary>Тип активного подключения компьютера — плашка справа в шапке (NetworkPill).</summary>
+    [ObservableProperty] private string netLabel = "Сеть";
+    [ObservableProperty] private bool hasNetwork = true;
+
     public event Action? NavigateToPlansRequested;
+    public event Action? NavigateToServersRequested;
 
     [RelayCommand]
     private void OpenTraffic() => NavigateToPlansRequested?.Invoke();
+
+    /// <summary>Быстрая смена узла с Главной (Android 38457d4): строка узла открывает "Серверы".</summary>
+    [RelayCommand]
+    private void OpenServers() => NavigateToServersRequested?.Invoke();
 
     public ConnectViewModel(VpnEngine vpnEngine, SubscriptionRepository subscription)
     {
@@ -76,11 +81,14 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
 
         _vpnEngine.PropertyChanged += OnVpnEnginePropertyChanged;
         _subscription.PropertyChanged += OnSubscriptionPropertyChanged;
+        NetworkChange.NetworkAddressChanged += OnNetworkChanged;
+        NetworkChange.NetworkAvailabilityChanged += OnNetworkAvailabilityChanged;
 
         _speedTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _speedTimer.Tick += (_, _) => SampleSpeed();
 
         RefreshFromState();
+        RefreshNetwork();
     }
 
     public async Task LoadAsync()
@@ -116,11 +124,42 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
     private void OnSubscriptionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) =>
         RunOnUiThread(RefreshFromState);
 
+    private void OnNetworkChanged(object? sender, EventArgs e) => RunOnUiThread(RefreshNetwork);
+
+    private void OnNetworkAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e) => RunOnUiThread(RefreshNetwork);
+
     private static void RunOnUiThread(Action action)
     {
         var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher == null || dispatcher.CheckAccess()) action();
         else dispatcher.BeginInvoke(action);
+    }
+
+    /// <summary>Физическое подключение с маршрутом по умолчанию, не считая самого туннеля (Wintun)
+    /// и прочих виртуальных адаптеров.</summary>
+    private void RefreshNetwork()
+    {
+        try
+        {
+            var active = NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus == OperationalStatus.Up
+                            && n.NetworkInterfaceType is not (NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel)
+                            && !n.Description.Contains("Wintun", StringComparison.OrdinalIgnoreCase)
+                            && !n.Description.Contains("Virtual", StringComparison.OrdinalIgnoreCase)
+                            && !n.Description.Contains("Hyper-V", StringComparison.OrdinalIgnoreCase)
+                            && n.GetIPProperties().GatewayAddresses.Any(g => g.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
+                                                                           && !g.Address.Equals(System.Net.IPAddress.Any)))
+                .ToList();
+            var wifi = active.FirstOrDefault(n => n.NetworkInterfaceType == NetworkInterfaceType.Wireless80211);
+            if (wifi != null) { NetLabel = "Wi-Fi"; HasNetwork = true; }
+            else if (active.Count > 0) { NetLabel = "Ethernet"; HasNetwork = true; }
+            else { NetLabel = "Нет сети"; HasNetwork = false; }
+        }
+        catch
+        {
+            NetLabel = "Сеть";
+            HasNetwork = true;
+        }
     }
 
     private void RefreshFromState()
@@ -146,7 +185,7 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
         GlobeStatus = IsConnected ? "on" : IsConnecting ? "connecting" : "off";
 
         var ruPrep = geo?.RuPrep ?? "надёжном месте";
-        var nodeLabel = node != null ? RemarkText.StripLeadingFlag(node.Name) : "сервером";
+        var nodeLabel = node != null ? RemarkText.StripLeadingFlag(node.Name) : "Выбрать за меня";
         Headline = IsConnected ? $"Ты в {ruPrep}" : IsConnecting ? "Ищем дорогу…" : "Пока без защиты";
         Subline = IsConnected ? $"{nodeLabel} · в туннеле"
             : IsConnecting ? $"Договариваемся с {nodeLabel}"
@@ -160,6 +199,13 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
         QuotaGb = (sub?.Traffic?.LimitBytes ?? 0) / 1_000_000_000.0;
         IsUnlimited = sub?.Traffic?.IsUnlimited ?? false;
 
+        var unlimited = IsUnlimited || QuotaGb <= 0;
+        var used = UsedGb.ToString("0.0", Ru);
+        TrafficValueLabel = unlimited ? $"{used} ГБ / ∞" : $"{used} / {(int)QuotaGb} ГБ";
+        TrafficFraction = unlimited ? 0 : Math.Clamp(UsedGb / QuotaGb, 0, 1);
+        ShowTrafficBar = !unlimited;
+        TrafficExpiryLabel = $"Подписка до {ExpiryLabel} · осталось {DaysLeft} {RuPlural.Days(DaysLeft)}";
+
         if (IsConnected)
         {
             var counters = _vpnEngine.ReadAdapterCounters();
@@ -171,13 +217,9 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
         else
         {
             _speedTimer.Stop();
-            DownSpeedMbps = 0;
-            UpSpeedMbps = 0;
+            DownSpeedLabel = "0,0";
+            UpSpeedLabel = "0,0";
             ConnectedTimeLabel = "00:00:00";
-            _downHistory.Clear();
-            _upHistory.Clear();
-            DownLinePoints = new(); DownFillPoints = new();
-            UpLinePoints = new(); UpFillPoints = new();
         }
     }
 
@@ -188,17 +230,12 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
         if (counters != null)
         {
             var dt = Math.Max((now - _lastSampleUtc).TotalSeconds, 0.001);
-            DownSpeedMbps = Math.Max(counters.Value.RxBytes - _lastRx, 0) / dt / 1_000_000.0;
-            UpSpeedMbps = Math.Max(counters.Value.TxBytes - _lastTx, 0) / dt / 1_000_000.0;
+            var down = Math.Max(counters.Value.RxBytes - _lastRx, 0) / dt / 1_000_000.0;
+            var up = Math.Max(counters.Value.TxBytes - _lastTx, 0) / dt / 1_000_000.0;
+            DownSpeedLabel = down.ToString("0.0", Ru);
+            UpSpeedLabel = up.ToString("0.0", Ru);
             _lastRx = counters.Value.RxBytes;
             _lastTx = counters.Value.TxBytes;
-
-            AppendHistory(_downHistory, DownSpeedMbps);
-            AppendHistory(_upHistory, UpSpeedMbps);
-            DownLinePoints = BuildLinePoints(_downHistory);
-            DownFillPoints = BuildFillPoints(DownLinePoints);
-            UpLinePoints = BuildLinePoints(_upHistory);
-            UpFillPoints = BuildFillPoints(UpLinePoints);
         }
         _lastSampleUtc = now;
 
@@ -210,38 +247,12 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
         }
     }
 
-    private static void AppendHistory(List<double> history, double value)
-    {
-        history.Add(value);
-        if (history.Count > SpeedHistorySize) history.RemoveAt(0);
-    }
-
-    /// <summary>Нормализует в единичный квадрат [0,1]×[0,1] (x — позиция по времени, y — 1 у
-    /// нуля/дно, 0 у максимума за окно/верх) вместо пиксельных координат — ConnectView.xaml
-    /// растягивает через Viewbox Stretch="Fill" на актуальный размер карточки, ViewModel не
-    /// должен знать её реальные пиксели.</summary>
-    private static PointCollection BuildLinePoints(IReadOnlyList<double> history)
-    {
-        var points = new PointCollection();
-        if (history.Count < 2) return points;
-        var max = Math.Max(history.Max(), 0.01);
-        for (var i = 0; i < history.Count; i++)
-            points.Add(new Point((double)i / (history.Count - 1), 1 - history[i] / max));
-        return points;
-    }
-
-    /// <summary>Та же линия + замыкание вниз по обоим краям — заливка области под графиком.</summary>
-    private static PointCollection BuildFillPoints(PointCollection linePoints)
-    {
-        if (linePoints.Count == 0) return new PointCollection();
-        var fill = new PointCollection(linePoints) { new Point(1, 1), new Point(0, 1) };
-        return fill;
-    }
-
     public void Dispose()
     {
         _speedTimer.Stop();
         _vpnEngine.PropertyChanged -= OnVpnEnginePropertyChanged;
         _subscription.PropertyChanged -= OnSubscriptionPropertyChanged;
+        NetworkChange.NetworkAddressChanged -= OnNetworkChanged;
+        NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
     }
 }
