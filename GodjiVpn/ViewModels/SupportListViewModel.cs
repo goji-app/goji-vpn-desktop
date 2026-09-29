@@ -53,10 +53,14 @@ public sealed partial class SupportListViewModel : ObservableObject
     [RelayCommand]
     private Task RetryAsync() => LoadAsync();
 
+    /// <summary>Подписи сегмент-контрола вкладок (SupportListView).</summary>
+    public string[] TabLabels { get; } = { "Открытые", "История" };
+
+    /// <summary>tabName — "open"/"closed" или подпись из TabLabels (сегмент-контрол передаёт сам пункт).</summary>
     [RelayCommand]
     private async Task SelectTabAsync(string tabName)
     {
-        var newTab = tabName == "closed" ? 1 : 0;
+        var newTab = tabName is "closed" or "История" ? 1 : 0;
         if (Tab == newTab) return;
         Tab = newTab;
         await LoadAsync();
@@ -64,6 +68,26 @@ public sealed partial class SupportListViewModel : ObservableObject
 
     public async Task LoadAsync()
     {
+        // Только для превью-экземпляра (GODJI_UI_PREVIEW_DEMO=1, см. App.xaml.cs): сверка
+        // вёрстки без обращения к API — у превью нет своей сессии.
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_DEMO") == "1")
+        {
+            Tickets.Clear();
+            if (Tab == 0)
+            {
+                Tickets.Add(new TicketListItem { Id = 1, Title = "Не подключается к серверу NL", LastMessage = "Попробуйте, пожалуйста, сменить способ пинга…", StatusLabel = StatusLabels["waiting_customer"], IsClosed = false, UnreadCount = 2, DateLabel = "28 сентября" });
+                Tickets.Add(new TicketListItem { Id = 2, Title = "Вопрос по оплате", LastMessage = "Спасибо, ждём ответа", StatusLabel = StatusLabels["awaiting_reply"], IsClosed = false, UnreadCount = 0, DateLabel = "25 сентября" });
+            }
+            else
+            {
+                Tickets.Add(new TicketListItem { Id = 3, Title = "Перенос на новый телефон", LastMessage = "Готово, устройство отвязано", StatusLabel = StatusLabels["closed"], IsClosed = true, UnreadCount = 0, DateLabel = "2 сентября" });
+            }
+            Loading = false;
+            LoadError = false;
+            CanLoadMore = false;
+            return;
+        }
+
         Loading = true;
         LoadError = false;
         try

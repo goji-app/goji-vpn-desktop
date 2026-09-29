@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using GodjiVpn.ViewModels;
 
 namespace GodjiVpn.Views;
@@ -12,7 +11,7 @@ public partial class FaqView : UserControl
         InitializeComponent();
     }
 
-    private void OnQuestionClick(object sender, MouseButtonEventArgs e)
+    private void OnQuestionClick(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement { Tag: FaqItemUi item }) item.ToggleCommand.Execute(null);
     }

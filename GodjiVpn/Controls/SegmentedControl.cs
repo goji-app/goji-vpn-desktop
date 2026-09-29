@@ -152,7 +152,9 @@ public class SegmentedControl : UserControl
             var index = i;
             cell.MouseLeftButtonUp += (_, _) =>
             {
-                SelectedIndex = index;
+                // SetCurrentValue, а не присваивание: не рвёт OneWay-привязку (выбор, который
+                // применяет команда, а не сама привязка), TwoWay по-прежнему пишет в источник.
+                SetCurrentValue(SelectedIndexProperty, index);
                 if (SelectCommand?.CanExecute(item) == true) SelectCommand.Execute(item);
             };
             _labels.Add(label);

@@ -56,6 +56,8 @@ public sealed partial class TicketChatViewModel : ObservableObject
     [ObservableProperty] private bool sending;
     [ObservableProperty] private bool sendError;
     [ObservableProperty] private bool showLogPicker;
+    /// <summary>Строка выбора вложения под скрепкой (DropdownMenu в Android).</summary>
+    [ObservableProperty] private bool showAttachMenu;
     [ObservableProperty] private string? attachmentError;
 
     // Раньше выбор файла ничем не ограничивался — при отправке весь файл читается целиком в
@@ -95,8 +97,20 @@ public sealed partial class TicketChatViewModel : ObservableObject
         Input = "";
         SendError = false;
         ShowLogPicker = false;
+        ShowAttachMenu = false;
         Title = "Поддержка";
         IsClosed = false;
+
+        // Только для превью-экземпляра (GODJI_UI_PREVIEW_DEMO=1): вёрстка без API и поллинга.
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_DEMO") == "1")
+        {
+            Title = "Не подключается к серверу NL";
+            Messages.Add(new MessageItem { Id = 1, IsMine = false, IsEvent = true, Text = "Обращение создано", AttachmentNames = new() });
+            Messages.Add(new MessageItem { Id = 2, IsMine = true, IsEvent = false, Text = "Здравствуйте! С утра не подключается к Нидерландам, остальные узлы работают.", TimeLabel = "10:12", AttachmentNames = new() { "screenshot.png" } });
+            Messages.Add(new MessageItem { Id = 3, IsMine = false, IsEvent = false, SenderName = "Поддержка Goji", Text = "Добрый день! Попробуйте, пожалуйста, сменить способ пинга на TCP и переподключиться.", TimeLabel = "10:20", AttachmentNames = new() });
+            Loading = false;
+            return;
+        }
 
         try
         {
@@ -137,6 +151,7 @@ public sealed partial class TicketChatViewModel : ObservableObject
     [RelayCommand]
     private void PickMedia()
     {
+        ShowAttachMenu = false;
         var dialog = new OpenFileDialog
         {
             Multiselect = true,
@@ -149,6 +164,7 @@ public sealed partial class TicketChatViewModel : ObservableObject
     [RelayCommand]
     private void PickPdf()
     {
+        ShowAttachMenu = false;
         var dialog = new OpenFileDialog { Multiselect = true, Title = "PDF-файл", Filter = "PDF-файлы|*.pdf" };
         if (dialog.ShowDialog() == true) AddAttachments(dialog.FileNames);
     }
@@ -185,7 +201,18 @@ public sealed partial class TicketChatViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ToggleLogPicker() => ShowLogPicker = !ShowLogPicker;
+    private void ToggleAttachMenu()
+    {
+        ShowAttachMenu = !ShowAttachMenu;
+        if (ShowAttachMenu) ShowLogPicker = false;
+    }
+
+    [RelayCommand]
+    private void ToggleLogPicker()
+    {
+        ShowAttachMenu = false;
+        ShowLogPicker = !ShowLogPicker;
+    }
 
     /// <summary>Вставляет хвост лог-файла ПРЯМО В ТЕКСТ сообщения, не как вложение — бэкенд
     /// принимает вложениями только image/video/PDF и отвечает 415 на текстовые файлы

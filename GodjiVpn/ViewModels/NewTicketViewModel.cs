@@ -53,6 +53,16 @@ public sealed partial class NewTicketViewModel : ObservableObject
         Queues.Clear();
         OnPropertyChanged(nameof(ShowQueuePicker));
 
+        // Только для превью-экземпляра (GODJI_UI_PREVIEW_DEMO=1): вёрстка без API.
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_DEMO") == "1")
+        {
+            Queues.Add(new QueueItem { Id = 1, Name = "Техническая помощь", IsSelected = true });
+            Queues.Add(new QueueItem { Id = 2, Name = "Оплата" });
+            OnPropertyChanged(nameof(ShowQueuePicker));
+            Loading = false;
+            return;
+        }
+
         var limitTask = _api.GetSupportTicketLimitAsync();
         var queuesTask = _api.GetSupportQueuesAsync();
         try

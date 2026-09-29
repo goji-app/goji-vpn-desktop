@@ -48,6 +48,22 @@ public sealed partial class FaqViewModel : ObservableObject
         Loading = true;
         LoadError = false;
         Sections.Clear();
+        // Только для превью-экземпляра (GODJI_UI_PREVIEW_DEMO=1): вёрстка без API.
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_DEMO") == "1")
+        {
+            Sections.Add(new FaqSectionUi
+            {
+                Name = "Подключение",
+                Items = new()
+                {
+                    new FaqItemUi { Question = "Почему VPN отключается через несколько минут?", Answer = "Проверьте, не включена ли экономия энергии для сетевого адаптера, и попробуйте другой узел.", IsExpanded = true },
+                    new FaqItemUi { Question = "Какой узел выбрать?", Answer = "Автовыбор подключает к самому быстрому узлу по результатам пинга." }
+                }
+            });
+            Loading = false;
+            OnPropertyChanged(nameof(IsEmpty));
+            return;
+        }
         try
         {
             var response = await _api.GetFaqAsync();

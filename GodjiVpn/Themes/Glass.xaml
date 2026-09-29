@@ -438,12 +438,15 @@
         <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="Padding" Value="14,11"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
                     <Border x:Name="Bd" Background="{DynamicResource ChipBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
                             BorderThickness="1.5" CornerRadius="16">
-                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+                        <!-- Без Margin=Padding: TextBox сам применяет Padding внутри своего
+                             TextBoxView, иначе отступ удваивался и поле выходило вдвое выше. -->
+                        <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsKeyboardFocused" Value="True">
