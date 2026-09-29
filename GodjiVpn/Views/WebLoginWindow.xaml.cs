@@ -24,10 +24,13 @@ public partial class WebLoginWindow : Window
     /// не смог бы продлевать сессию раз в сутки. Может быть null, если сайт её не выставил.</summary>
     public string? RefreshToken { get; private set; }
 
+    private bool _closed;
+
     public WebLoginWindow()
     {
         InitializeComponent();
         Loaded += async (_, _) => await InitializeAsync();
+        Closed += (_, _) => _closed = true;
     }
 
     private async Task InitializeAsync()
@@ -75,8 +78,15 @@ public partial class WebLoginWindow : Window
     /// InitializeAsync) на случай, если сайт вообще не делает полную навигацию после входа.</summary>
     private async Task CheckForSessionCookieAsync()
     {
-        if (_handled) return;
-        var cookies = await Web.CoreWebView2.CookieManager.GetCookiesAsync(SiteUrl);
+        if (_handled || _closed) return;
+        List<Microsoft.Web.WebView2.Core.CoreWebView2Cookie> cookies;
+        try { cookies = await Web.CoreWebView2.CookieManager.GetCookiesAsync(SiteUrl); }
+        catch { return; } // окно закрыли во время запроса — WebView2 уже освобождён
+        // Повторная проверка ПОСЛЕ await: таймер и NavigationCompleted могли одновременно пройти
+        // первую проверку, и второй вызов, продолжившись после Close() первого, ставил
+        // DialogResult уже закрытому окну — InvalidOperationException (реальный crash.log).
+        // То же, если пользователь закрыл окно, пока шёл запрос кук.
+        if (_handled || _closed) return;
         var cookie = cookies.FirstOrDefault(c => c.Name == SessionCookieName);
         if (cookie == null || string.IsNullOrWhiteSpace(cookie.Value)) return;
 
@@ -89,6 +99,7 @@ public partial class WebLoginWindow : Window
 
     private void OnCloseClick(object sender, RoutedEventArgs e)
     {
+        if (_closed) return;
         DialogResult = false;
         Close();
     }
