@@ -26,6 +26,7 @@ public sealed partial class ShellViewModel : ObservableObject
         Settings.RequestLogout += () => LoggedOut?.Invoke();
         Connect.NavigateToPlansRequested += () => SelectedTabIndex = 2;
         Connect.NavigateToServersRequested += () => SelectedTabIndex = 1;
+        Servers.ServerPicked += () => SelectedTabIndex = 0;
     }
 
     /// <summary>Вызывается один раз при старте приложения (см. MainViewModel.InitializeAsync)

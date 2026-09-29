@@ -8,14 +8,39 @@ using GodjiVpn.Utils;
 
 namespace GodjiVpn.ViewModels;
 
+/// <summary>Цвет плашки пинга — pingColor() из эталона: не проверен — TextSecondary,
+/// &lt;40 — TealDeep, &lt;90 — жёлтый, иначе/недоступен — Danger.</summary>
+public enum PingLevel { Unchecked, Good, Mid, Bad }
+
 public sealed partial class NodeItem : ObservableObject
 {
     public required VlessNode Node { get; init; }
     /// <summary>-2 = ещё не проверяли ("проверить"), -1 = недоступен, иначе — мс.</summary>
-    [ObservableProperty] private int pingMs = -2;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PingLabel))]
+    [NotifyPropertyChangedFor(nameof(PingLevel))]
+    private int pingMs = -2;
     [ObservableProperty] private bool isSelected;
-    [ObservableProperty] private bool isChecking;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PingLabel))]
+    private bool isChecking;
     [ObservableProperty] private bool isFavorite;
+
+    public string PingLabel => IsChecking ? "…" : PingMs switch
+    {
+        -2 => "проверить",
+        < 0 => "недоступен",
+        _ => $"{PingMs} мс"
+    };
+
+    public PingLevel PingLevel => PingMs switch
+    {
+        -2 => PingLevel.Unchecked,
+        < 0 => PingLevel.Bad,
+        < 40 => PingLevel.Good,
+        < 90 => PingLevel.Mid,
+        _ => PingLevel.Bad
+    };
 
     /// <summary>Добавлен вручную по JSON-профилю (см. CustomNodeStore), а не пришёл с
     /// подписки — только у таких узлов показываем кнопку удаления.</summary>
@@ -48,6 +73,10 @@ public sealed partial class ServersViewModel : ObservableObject
     /// вкладки.</summary>
     [ObservableProperty] private string? refreshResultMessage;
     [ObservableProperty] private bool refreshResultIsError;
+    private CancellationTokenSource? _refreshMessageCts;
+
+    /// <summary>Выбор узла сразу возвращает на "Главную" — как pick() в эталоне v5.</summary>
+    public event Action? ServerPicked;
 
     public ServersViewModel(SubscriptionRepository subscription, PingService pingService, CustomNodeStore customNodes, FavoriteServersStore favorites)
     {
@@ -81,13 +110,31 @@ public sealed partial class ServersViewModel : ObservableObject
         SyncFromRepository();
 
         RefreshResultIsError = !ok || _subscription.LastError != null;
-        RefreshResultMessage = RefreshResultIsError
-            ? _subscription.LastError ?? "Не удалось обновить список серверов"
-            : "Список серверов обновлён";
+        ShowRefreshMessage(RefreshResultIsError
+            ? _subscription.LastError ?? "Не удалось обновить подписку — проверьте соединение"
+            : "Подписка обновлена");
+    }
+
+    /// <summary>Баннер-результат прячется сам через 4.5 с (как в Android), либо по крестику.</summary>
+    private async void ShowRefreshMessage(string message)
+    {
+        _refreshMessageCts?.Cancel();
+        var cts = _refreshMessageCts = new CancellationTokenSource();
+        RefreshResultMessage = message;
+        try
+        {
+            await Task.Delay(4500, cts.Token);
+            RefreshResultMessage = null;
+        }
+        catch (TaskCanceledException) { }
     }
 
     [RelayCommand]
-    private void DismissRefreshResult() => RefreshResultMessage = null;
+    private void DismissRefreshResult()
+    {
+        _refreshMessageCts?.Cancel();
+        RefreshResultMessage = null;
+    }
 
     private void SyncFromRepository()
     {
@@ -121,6 +168,7 @@ public sealed partial class ServersViewModel : ObservableObject
     {
         foreach (var n in Nodes) n.IsSelected = n == item;
         _subscription.Select(item.Node.Id);
+        ServerPicked?.Invoke();
     }
 
     [RelayCommand]
