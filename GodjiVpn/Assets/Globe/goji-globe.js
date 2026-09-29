@@ -3,7 +3,12 @@
 //   status  "off" | "connecting" | "on"   — dim / blink / locked & lit
 //   node    node id (see GOJI_NODES)
 //   theme   "dark" (default) | "light"
-//   label   "on" (default) — floating country label at the connected node
+//   label   "on" — floating country label at the connected node (off by default)
+//   satellites "on" — orbiting satellites (login screen only; read once at boot)
+//
+// Windows-порт: эталон handoff-1.0.77/reference/goji-globe.js (дизайн v5 «Стекло») плюс
+// три доработки — библиотеки из локальной vendor/ вместо CDN, реальный узел подписки
+// (setNode) и перелёт маркера при смене узла (как GojiGlobeRenderer.kt в Android).
 const GOJI_NODES = {
   nl: { lat: 52.37, lon: 4.9, country: 'Netherlands', city: 'Амстердам', title: 'Нидерланды' },
   de: { lat: 50.11, lon: 8.68, country: 'Germany', city: 'Франкфурт', title: 'Германия' },
@@ -15,22 +20,15 @@ const GOJI_NODES = {
   auto: { lat: 60.17, lon: 24.94, country: 'Finland', city: 'Хельсинки', title: 'Финляндия' }
 };
 const HOME = { lat: 55.75, lon: 37.62 };
-// Раньше это были живые CDN-URL (cdn.jsdelivr.net/esm.sh) — глобус (заглавная картинка на
-// логине и на главном экране) молча не рисовал береговые линии/границы без интернета или при
-// блокировке этих доменов. В Android-версии геометрия целиком офлайновая (assets/geo_globe.json,
-// без единого сетевого запроса) — здесь та же идея: three.js/topojson-client/world-atlas лежат
-// локально в vendor/ рядом с этим файлом, отдаются тем же виртуальным хостом godji.local, что и
-// сам globe.html (см. GlobeHost.xaml.cs → SetVirtualHostNameToFolderMapping).
+// Живые CDN-URL (cdn.jsdelivr.net/esm.sh) заменены локальными копиями: без интернета или при
+// блокировке этих доменов глобус молча не рисовал береговые линии. three.js/topojson-client/
+// world-atlas лежат в vendor/ и отдаются тем же виртуальным хостом godji.local, что и
+// globe.html (см. GlobeHost.xaml.cs → SetVirtualHostNameToFolderMapping).
 const ATLAS = './vendor/countries-110m.json';
 
-// grid — с редизайна Tactical Sand & Void это отдельный холодный "wire"-cyan (тот же тон, что
-// GodjiColors.Purple/PurpleBrush), а не land/grid тон, как раньше — по референсу Stitch (Three.js
-// wireframe 0x00d2ff). Плотность самой сетки (SphereGeometry(R*1.001, 24, 12) ниже) уже даёт шаг
-// 15° по обеим осям "из коробки" — то, ради чего Android увеличивал шаг вручную (30°→15°) в своём
-// GLES-рендере, здесь не требуется отдельно менять.
 const THEMES = {
-  dark: { ocean: 0x0a201d, oceanOp: 0.9, land: 0x2f6f66, landOp: 0.75, grid: 0x00d2ff, gridOp: 0.11, hi: 0x00e7d4, arc: 0x00e7d4, home: 0x8b7cf6, atmo: 0x00d4c4, dot: 0x4a625d, labelBg: 'rgba(10,20,18,.82)', labelFg: '#EAF4F2', labelBd: 'rgba(0,231,212,.45)' },
-  light: { ocean: 0xe7e0cf, oceanOp: 1, land: 0x0f4d45, landOp: 0.55, grid: 0x00838f, gridOp: 0.1, hi: 0x00897e, arc: 0xd9714b, home: 0xd9714b, atmo: 0x00a79b, dot: 0xa9a08a, labelBg: 'rgba(255,253,247,.94)', labelFg: '#12312C', labelBd: 'rgba(0,167,155,.5)' }
+  dark: { ocean: 0x0a201d, oceanOp: 0.9, land: 0x2f6f66, landOp: 0.75, grid: 0x00d4c4, gridOp: 0.07, hi: 0x00e7d4, arc: 0x00e7d4, home: 0x8b7cf6, atmo: 0x00d4c4, dot: 0x4a625d, labelBg: 'rgba(10,20,18,.82)', labelFg: '#EAF4F2', labelBd: 'rgba(0,231,212,.45)' },
+  light: { ocean: 0xe7e0cf, oceanOp: 1, land: 0x0f4d45, landOp: 0.55, grid: 0x0f4d45, gridOp: 0.06, hi: 0x00897e, arc: 0xd9714b, home: 0xd9714b, atmo: 0x00a79b, dot: 0xa9a08a, labelBg: 'rgba(255,253,247,.94)', labelFg: '#12312C', labelBd: 'rgba(0,167,155,.5)' }
 };
 
 let atlasPromise = null;
@@ -65,12 +63,9 @@ class GojiGlobe extends HTMLElement {
 
   attributeChangedCallback() { if (this._apply) this._apply(); }
 
-  // ── real subscription node (Windows port addition) ────────────
-  // Оригинальный компонент знал только фиксированный набор GOJI_NODES по id — здесь
-  // подключаем реальный узел из подписки пользователя (lat/lon/country/city/title),
-  // country обязательно должен совпадать с properties.name слоя world-atlas (для подсветки
-  // полигона), city/title — русские подписи для плавающей метки. Вызывается из C# через
-  // CoreWebView2.ExecuteScriptAsync после каждого выбора/переподключения к узлу.
+  // Реальный узел подписки {lat, lon, country, city, title}: country должен совпадать с
+  // properties.name слоя world-atlas (для контура страны). Вызывается из C# через
+  // CoreWebView2.ExecuteScriptAsync (window.godjiSetNode в globe.html).
   setNode(data) {
     this._dynamicNode = data;
     this._dynamicNodeChanged = true;
@@ -105,12 +100,7 @@ class GojiGlobe extends HTMLElement {
     const { w, h } = this.size();
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, w / h, 0.1, 100);
-    // Камера "подъезжает" ближе при подключении/на связи, крупнее и нагляднее показывая
-    // маршрут дом → узел, и плавно отъезжает обратно на общий план при отключении — портировано
-    // 1:1 из camDist/targetCamDist в GojiGlobeRenderer.kt (Android), масштаб под здешний
-    // радиус сферы (R=1.28 против Android-овского RADIUS=1).
-    let camDist = 5.1, targetCamDist = 5.1;
-    camera.position.set(0, 0, camDist);
+    camera.position.set(0, 0, 5.1);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -167,16 +157,33 @@ class GojiGlobe extends HTMLElement {
       this._apply();
     });
 
+    let hlName = null, hlCore = null, hlGlow = null;
     const setHighlight = name => {
-      if (highlight) { globe.remove(highlight); highlight.geometry.dispose(); highlight = null; }
+      if (name === hlName && (highlight || !atlas)) return;
+      if (highlight) {
+        globe.remove(highlight);
+        highlight.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+        highlight = null;
+      }
+      hlName = name;
       if (!atlas || !name) return;
       const f = atlas.features.find(x => x.properties && x.properties.name === name);
       if (!f) return;
       const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
       const rings = [];
-      polys.forEach(p => p.forEach(ring => rings.push(ring)));
-      highlight = lineFromCoords(rings, T.hi, 1, R * 1.012);
-      highlight.material.linewidth = 2;
+      polys.forEach(p => p.forEach(ring => { if (ring.length > 3) rings.push(ring); }));
+      hlCore = new THREE.MeshBasicMaterial({ color: T.hi, transparent: true, opacity: 1 });
+      hlGlow = new THREE.MeshBasicMaterial({ color: T.hi, transparent: true, opacity: 0.28, depthWrite: false });
+      highlight = new THREE.Group();
+      rings.forEach(ring => {
+        const path = new THREE.CurvePath();
+        for (let i = 0; i < ring.length - 1; i++) {
+          path.add(new THREE.LineCurve3(toVec(ring[i][1], ring[i][0], R * 1.014), toVec(ring[i + 1][1], ring[i + 1][0], R * 1.014)));
+        }
+        const segs = Math.min(600, Math.max(24, ring.length * 2));
+        highlight.add(new THREE.Mesh(new THREE.TubeGeometry(path, segs, 0.0055, 5, false), hlCore));
+        highlight.add(new THREE.Mesh(new THREE.TubeGeometry(path, segs, 0.016, 6, false), hlGlow));
+      });
       globe.add(highlight);
     };
 
@@ -194,7 +201,7 @@ class GojiGlobe extends HTMLElement {
     });
 
     const home = new THREE.Mesh(
-      new THREE.SphereGeometry(0.032, 14, 14),
+      new THREE.SphereGeometry(0.015, 14, 14),
       new THREE.MeshBasicMaterial({ color: T.home })
     );
     home.position.copy(toVec(HOME.lat, HOME.lon, R * 1.012));
@@ -203,14 +210,14 @@ class GojiGlobe extends HTMLElement {
     // connection marker: solid core + two expanding rings, laid flat on the surface
     const marker = new THREE.Group();
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(0.052, 16, 16),
+      new THREE.SphereGeometry(0.02, 16, 16),
       new THREE.MeshBasicMaterial({ color: 0xffffff })
     );
     const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(0.085, 16, 16),
+      new THREE.SphereGeometry(0.036, 16, 16),
       new THREE.MeshBasicMaterial({ color: T.hi, transparent: true, opacity: 0.4 })
     );
-    const ringGeo = new THREE.RingGeometry(0.09, 0.105, 40);
+    const ringGeo = new THREE.RingGeometry(0.038, 0.044, 40);
     const rings = [0, 1].map(() => new THREE.Mesh(
       ringGeo, new THREE.MeshBasicMaterial({ color: T.hi, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
     ));
@@ -223,21 +230,87 @@ class GojiGlobe extends HTMLElement {
       if (arc) { globe.remove(arc); arc.geometry.dispose(); arc = null; }
       const n = this._dynamicNode || GOJI_NODES[id] || GOJI_NODES.auto;
       const a = toVec(HOME.lat, HOME.lon, R * 1.012), b = toVec(n.lat, n.lon, R * 1.012);
-      const mid = a.clone().add(b).multiplyScalar(0.5).normalize().multiplyScalar(R * 1.5);
+      const mid = a.clone().add(b).multiplyScalar(0.5).normalize().multiplyScalar(R * 1.32);
       curve = new THREE.QuadraticBezierCurve3(a, mid, b);
       arc = new THREE.Mesh(
-        new THREE.TubeGeometry(curve, 64, 0.011, 8, false),
-        new THREE.MeshBasicMaterial({ color: T.arc, transparent: true, opacity: 0.9 })
+        new THREE.TubeGeometry(curve, 96, 0.0032, 6, false),
+        new THREE.MeshBasicMaterial({ color: T.arc, transparent: true, opacity: 0.35 })
       );
       globe.add(arc);
     };
 
-    const packet = new THREE.Mesh(
-      new THREE.SphereGeometry(0.042, 12, 12),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 })
-    );
-    packet.visible = false;
-    globe.add(packet);
+    // ── flight (Windows port, как e3012ab в Android) ─────────────
+    // При смене местоположения узла, пока маркер виден, от прежней страны к новой
+    // прорисовывается дуга (тем выше, чем дальше лететь), по ней летит светящаяся голова,
+    // затем дуга гаснет: 1.6 с полёт + 0.8 с затухание, ease-in-out.
+    let flight = null;
+    const FLIGHT_SEGS = 96, FLY = 1.6, FADE = 0.8;
+    const clearFlight = () => {
+      if (!flight) return;
+      globe.remove(flight.line); globe.remove(flight.head);
+      flight.line.geometry.dispose(); flight.line.material.dispose();
+      flight.head.geometry.dispose(); flight.head.material.dispose();
+      flight = null;
+    };
+    const startFlight = (from, to) => {
+      clearFlight();
+      const a = toVec(from.lat, from.lon, R * 1.014), b = toVec(to.lat, to.lon, R * 1.014);
+      const angle = a.angleTo(b);
+      if (angle < 0.01) return;
+      const mid = a.clone().add(b).multiplyScalar(0.5).normalize().multiplyScalar(R * (1.18 + 0.32 * angle / Math.PI));
+      const c = new THREE.QuadraticBezierCurve3(a, mid, b);
+      const geo = new THREE.BufferGeometry().setFromPoints(c.getPoints(FLIGHT_SEGS));
+      geo.setDrawRange(0, 0);
+      const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: T.hi, transparent: true, opacity: 0.9 }));
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.018, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1 }));
+      globe.add(line); globe.add(head);
+      flight = { curve: c, line, head, start: t };
+    };
+    const ease = x => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
+
+    // data stream: a train of tiny beads flowing A → B, brightest at the head
+    const STREAM = 9;
+    const beads = Array.from({ length: STREAM }, (_, i) => {
+      const m = new THREE.Mesh(
+        new THREE.SphereGeometry(i === 0 ? 0.013 : 0.009 - i * 0.0005, 10, 10),
+        new THREE.MeshBasicMaterial({ color: i === 0 ? 0xffffff : T.arc, transparent: true, opacity: 0 })
+      );
+      m.visible = false; globe.add(m); return m;
+    });
+    const packet = beads[0];
+
+    // ── satellites (opt-in: satellites="on") ──────────────────────
+    const sats = [];
+    const satLayer = new THREE.Group();
+    scene.add(satLayer);
+    if (this.getAttribute('satellites') === 'on') {
+      const bodyMat = new THREE.MeshBasicMaterial({ color: 0xE9EEF2 });
+      const panelMat = new THREE.MeshBasicMaterial({ color: T.hi, transparent: true, opacity: 0.9 });
+      const orbitMat = new THREE.LineBasicMaterial({ color: T.hi, transparent: true, opacity: 0.12 });
+      const N = 16;
+      for (let i = 0; i < N; i++) {
+        const r = R * (1.16 + (i % 4) * 0.07 + Math.random() * 0.03);
+        const plane = new THREE.Group();
+        plane.rotation.set((Math.random() - 0.5) * 2.2, Math.random() * Math.PI * 2, (Math.random() - 0.5) * 1.2);
+        const pts = [];
+        for (let k = 0; k <= 96; k++) { const a = k / 96 * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)); }
+        if (i % 2 === 0) plane.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), orbitMat));
+        const sat = new THREE.Group();
+        const s = 0.6 + Math.random() * 0.5;
+        sat.add(new THREE.Mesh(new THREE.BoxGeometry(0.022 * s, 0.022 * s, 0.03 * s), bodyMat));
+        const pg = new THREE.BoxGeometry(0.05 * s, 0.003, 0.022 * s);
+        const p1 = new THREE.Mesh(pg, panelMat); p1.position.x = 0.04 * s;
+        const p2 = new THREE.Mesh(pg, panelMat); p2.position.x = -0.04 * s;
+        const blink = new THREE.Mesh(new THREE.SphereGeometry(0.006 * s, 6, 6), new THREE.MeshBasicMaterial({ color: i % 3 ? 0xFF5A4E : 0xFFFFFF, transparent: true }));
+        blink.position.y = 0.016 * s;
+        sat.add(p1, p2, blink);
+        plane.add(sat);
+        satLayer.add(plane);
+        sats.push({ sat, blink, r, a: Math.random() * Math.PI * 2, sp: (0.0025 + Math.random() * 0.004) * (i % 3 === 0 ? -1 : 1), ph: Math.random() * 6 });
+      }
+      this._satMats = { panelMat, orbitMat };
+    }
 
     // ── floating label ───────────────────────────────────────────
     const tag = document.createElement('div');
@@ -249,7 +322,7 @@ class GojiGlobe extends HTMLElement {
     });
     this.appendChild(tag);
 
-    let status = 'off', nodeId = 'auto', targetY = 0, targetX = -0.2, t = 0, locked = false;
+    let status = 'off', nodeId = 'auto', targetY = 0, targetX = -0.2, t = 0, locked = false, shownNode = null;
 
     this._apply = () => {
       const nt = THEMES[themeName()];
@@ -263,16 +336,29 @@ class GojiGlobe extends HTMLElement {
         home.material.color.setHex(T.home);
         halo.material.color.setHex(T.hi); rings.forEach(r => r.material.color.setHex(T.hi));
         if (arc) arc.material.color.setHex(T.arc);
+        if (hlCore) { hlCore.color.setHex(T.hi); hlGlow.color.setHex(T.hi); }
+        if (this._satMats) { this._satMats.panelMat.color.setHex(T.hi); this._satMats.orbitMat.color.setHex(T.hi); }
+        if (flight) flight.line.material.color.setHex(T.hi);
       }
       const prevStatus = status;
       status = this.getAttribute('status') || 'off';
       const n = this.getAttribute('node') || 'auto';
-      if (n !== nodeId || !arc || this._dynamicNodeChanged) { nodeId = n; buildArc(nodeId); this._dynamicNodeChanged = false; }
+      const prevNode = shownNode;
+      if (n !== nodeId || !arc || this._dynamicNodeChanged) {
+        nodeId = n; this._dynamicNodeChanged = false; buildArc(nodeId); locked = false;
+      }
       const nd = this._dynamicNode || GOJI_NODES[nodeId] || GOJI_NODES.auto;
+      shownNode = nd;
+      // Перелёт — только если маркер уже был виден и место реально сменилось.
+      if (prevNode && prevStatus !== 'off' && status !== 'off' &&
+          (Math.abs(prevNode.lat - nd.lat) > 0.01 || Math.abs(prevNode.lon - nd.lon) > 0.01)) {
+        startFlight(prevNode, nd);
+      }
+      if (status === 'off') clearFlight();
 
       Object.keys(pins).forEach(id => {
         const active = id === nodeId || (nodeId === 'auto' && id === 'fi');
-        pins[id].visible = !(active && status !== 'off');
+        pins[id].visible = false;
         pins[id].material.color.setHex(T.dot);
       });
 
@@ -280,18 +366,14 @@ class GojiGlobe extends HTMLElement {
       marker.position.copy(at);
       marker.lookAt(at.clone().multiplyScalar(2));
       marker.visible = status !== 'off';
-      // Точку А (дом) раньше рисовали всегда — по мотивам референсного видео (см. Android
-      // GojiGlobeRenderer.kt) она должна гореть только пока реально что-то происходит
-      // (подключение/подключено), в состоянии "off" глобус остаётся полностью пустым.
       home.visible = status !== 'off';
       setHighlight(status === 'off' ? null : nd.country);
 
       // frame the node (biased toward it, home still in view) and lock once connected
-      const framing = at.clone().multiplyScalar(0.72)
-        .add(toVec(HOME.lat, HOME.lon).multiplyScalar(0.28)).normalize();
+      const framing = at.clone().normalize();
       targetY = -Math.atan2(framing.x, framing.z);
       const y0 = framing.y, z0 = Math.hypot(framing.x, framing.z);
-      targetX = Math.atan2(y0, z0) - 0.18;
+      targetX = Math.atan2(y0, z0);
       if (status !== 'on') locked = false;
       if (prevStatus !== status && status === 'off') { tag.style.opacity = '0'; }
 
@@ -319,28 +401,29 @@ class GojiGlobe extends HTMLElement {
       t += 0.016;
       const on = status === 'on', connecting = status === 'connecting';
 
+      const wrapY = () => { const d = targetY - globe.rotation.y; return d - Math.round(d / (Math.PI * 2)) * Math.PI * 2; };
       if (on) {
-        const dy = targetY - globe.rotation.y, dx = targetX - globe.rotation.x;
+        const dy = wrapY(), dx = targetX - globe.rotation.x;
         if (Math.abs(dy) < 0.002 && Math.abs(dx) < 0.002) { locked = true; }
         if (!locked) { globe.rotation.y += dy * 0.06; globe.rotation.x += dx * 0.06; }
       } else if (connecting) {
-        globe.rotation.y += (targetY - globe.rotation.y) * 0.05 + 0.001;
+        globe.rotation.y += wrapY() * 0.05;
         globe.rotation.x += (targetX - globe.rotation.x) * 0.05;
       } else {
         globe.rotation.y += 0.0013;
         globe.rotation.x += (-0.16 - globe.rotation.x) * 0.02;
       }
 
-      targetCamDist = on ? 2.94 : connecting ? 3.52 : 5.1;
-      camDist += (targetCamDist - camDist) * 0.045;
-      camera.position.set(0, 0, camDist);
-
-      if (arc) arc.material.opacity = on ? 0.9 : connecting ? 0.3 + Math.sin(t * 5) * 0.22 : 0.05;
+      if (arc) { arc.visible = on || connecting; arc.material.opacity = on ? 0.35 : 0.15 + Math.sin(t * 5) * 0.1; }
       if (curve) {
-        packet.visible = on || connecting;
-        const p = (t * (on ? 0.4 : 0.22)) % 1;
-        packet.position.copy(curve.getPoint(p));
-        packet.material.opacity = 0.3 + Math.sin(p * Math.PI) * 0.65;
+        const head = (t * (on ? 0.45 : 0.25)) % 1;
+        beads.forEach((bd, i) => {
+          bd.visible = on || connecting;
+          const p = head - i * 0.022;
+          if (p < 0 || p > 1) { bd.material.opacity = 0; return; }
+          bd.position.copy(curve.getPoint(p));
+          bd.material.opacity = (1 - i / STREAM) * Math.sin(p * Math.PI) * (on ? 1 : 0.7);
+        });
       }
       rings.forEach((r, i) => {
         const p = ((t * 0.55) + i * 0.5) % 1;
@@ -348,7 +431,10 @@ class GojiGlobe extends HTMLElement {
         r.material.opacity = (on ? 0.75 : 0.5) * (1 - p);
       });
       halo.material.opacity = (on ? 0.42 : 0.25) + Math.sin(t * 2.4) * 0.08;
-      if (highlight) highlight.material.opacity = on ? 1 : 0.45 + Math.sin(t * 4) * 0.25;
+      if (highlight && hlCore) {
+        hlCore.opacity = on ? 1 : 0.5 + Math.sin(t * 4) * 0.3;
+        hlGlow.opacity = (on ? 0.3 : 0.15) + Math.sin(t * 2.2) * 0.1;
+      }
       atmo.material.opacity = on ? 0.09 : 0.05;
 
       // label follows the marker, hidden when it swings behind the globe
@@ -359,9 +445,26 @@ class GojiGlobe extends HTMLElement {
         v.project(camera);
         tag.style.left = ((v.x * 0.5 + 0.5) * s.w) + 'px';
         tag.style.top = ((-v.y * 0.5 + 0.5) * s.h) + 'px';
-        tag.style.opacity = front ? '1' : '0';
+        tag.style.opacity = front && this.getAttribute('label') === 'on' ? '1' : '0';
       } else tag.style.opacity = '0';
 
+      if (flight) {
+        const el = t - flight.start;
+        const p = ease(Math.min(1, el / FLY));
+        flight.line.geometry.setDrawRange(0, Math.max(2, Math.round(p * FLIGHT_SEGS) + 1));
+        flight.head.position.copy(flight.curve.getPoint(p));
+        const fade = el <= FLY ? 1 : Math.max(0, 1 - (el - FLY) / FADE);
+        flight.line.material.opacity = 0.9 * fade;
+        flight.head.material.opacity = fade;
+        if (el > FLY + FADE) clearFlight();
+      }
+
+      sats.forEach(o => {
+        o.a += o.sp;
+        o.sat.position.set(Math.cos(o.a) * o.r, 0, Math.sin(o.a) * o.r);
+        o.sat.rotation.y = -o.a;
+        o.blink.material.opacity = Math.sin(t * 5 + o.ph) > 0.6 ? 1 : 0.15;
+      });
       renderer.render(scene, camera);
     };
     globe.updateMatrixWorld();

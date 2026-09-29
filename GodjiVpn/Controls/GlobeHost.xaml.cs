@@ -23,6 +23,10 @@ public partial class GlobeHost : UserControl
     private bool _disposed;
     private readonly Queue<Func<Task>> _pending = new();
 
+    /// <summary>Спутники на орбитах — только экран входа (satellites="on" в эталоне).
+    /// Задаётся в XAML до загрузки: компонент читает его один раз при старте.</summary>
+    public bool Satellites { get; set; }
+
     public GlobeHost()
     {
         InitializeComponent();
@@ -74,7 +78,7 @@ public partial class GlobeHost : UserControl
                 await SetThemeAsync(ThemeService.Current?.IsDark ?? false);
                 while (_pending.Count > 0 && !_disposed) await _pending.Dequeue()();
             };
-            Web.CoreWebView2.Navigate($"https://{VirtualHost}/globe.html");
+            Web.CoreWebView2.Navigate($"https://{VirtualHost}/globe.html{(Satellites ? "?sat=1" : "")}");
 
             // Живое переключение темы, пока экран с глобусом уже открыт (не только на старте) —
             // тот же статический синглтон-паттерн, что и VpnEngine.Current.

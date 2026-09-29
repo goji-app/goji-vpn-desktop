@@ -11,6 +11,12 @@
 </head>
 <body>
   <goji-globe id="globe" theme="light" status="off" node="auto"></goji-globe>
+  <script>
+    // Спутники читаются компонентом один раз при загрузке (boot) — поэтому атрибут ставим
+    // до подключения модуля, по параметру ?sat=1 (GlobeHost.Satellites, только экран входа).
+    if (new URLSearchParams(location.search).get('sat') === '1')
+      document.getElementById('globe').setAttribute('satellites', 'on');
+  </script>
   <script type="module" src="./goji-globe.js"></script>
   <script>
     // Тонкая обёртка над методами/атрибутами <goji-globe> — вызывается из C#
