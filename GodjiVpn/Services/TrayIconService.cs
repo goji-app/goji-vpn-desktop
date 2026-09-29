@@ -17,12 +17,14 @@ public sealed class TrayIconService : IDisposable
     private readonly TaskbarIcon _icon;
     private readonly VpnEngine _vpnEngine;
     private readonly MenuItem _toggleItem;
+    private readonly ConnectViewModel _connect;
 
     public bool IsExiting { get; private set; }
 
     public TrayIconService(VpnEngine vpnEngine, ConnectViewModel connect, Window window, Action exit)
     {
         _vpnEngine = vpnEngine;
+        _connect = connect;
 
         _icon = new TaskbarIcon
         {
@@ -52,6 +54,11 @@ public sealed class TrayIconService : IDisposable
         _icon.TrayMouseDoubleClick += (_, _) => ShowWindow(window);
 
         _vpnEngine.PropertyChanged += (_, _) => UpdateStatus();
+        // Название узла в меню меняется вместе с выбором на вкладке "Серверы".
+        connect.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ConnectViewModel.CurrentNodeName)) UpdateStatus();
+        };
         UpdateStatus();
     }
 
@@ -70,10 +77,16 @@ public sealed class TrayIconService : IDisposable
         var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher != null && !dispatcher.CheckAccess()) { dispatcher.BeginInvoke(UpdateStatus); return; }
 
-        _icon.ToolTipText = _vpnEngine.IsRunning ? "Godji VPN — подключено"
-            : _vpnEngine.IsConnecting ? "Godji VPN — подключение…"
+        // Аналог ярлыка "Подключиться: <последний узел>" на иконке Android (59e214b): из трея
+        // VPN поднимается на выбранном узле без открытия окна — и видно, на каком именно.
+        var node = _connect.CurrentNodeName;
+        _icon.ToolTipText = _vpnEngine.IsRunning ? $"Godji VPN — подключено: {node}"
+            : _vpnEngine.IsConnecting ? $"Godji VPN — подключаемся: {node}"
             : "Godji VPN — отключено";
-        _toggleItem.Header = _vpnEngine.IsRunning ? "Отключить" : "Подключить";
+        _toggleItem.Header = _vpnEngine.IsRunning ? "Отключить VPN"
+            : _vpnEngine.IsConnecting ? $"Подключаемся: {node}"
+            : $"Подключиться: {node}";
+        _toggleItem.IsEnabled = !_vpnEngine.IsConnecting;
     }
 
     /// <summary>Аналог NotificationCompat-уведомлений Android (см. SubscriptionNotifier) —
