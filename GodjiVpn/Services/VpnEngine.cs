@@ -236,7 +236,7 @@ public sealed class VpnEngine : INotifyPropertyChanged
         // машине; 40с даёт запас на медленную инициализацию Wintun/сетевого профиля
         // Windows, не удлиняя типичный (быстрый) случай — цикл возвращается сразу же, как
         // адаптер найден, а не ждёт полный таймаут.
-        _actualAdapterName = await WaitForAdapterAsync(TimeSpan.FromSeconds(40)).ConfigureAwait(false);
+        _actualAdapterName = await WaitForAdapterAsync(TimeSpan.FromSeconds(40), _singBoxProcess).ConfigureAwait(false);
         LogEngine($"adapter found: {_actualAdapterName}");
 
         // Пока IsRunning ещё false, OnCoreProcessExitedAsync на смерть любого из ядер молча
@@ -782,7 +782,7 @@ public sealed class VpnEngine : INotifyPropertyChanged
 
     /// <returns>Реальное имя адаптера (см. _actualAdapterName) — не обязательно
     /// RequestedAdapterName, если Windows его переименовала в процессе идентификации сети.</returns>
-    private static async Task<string> WaitForAdapterAsync(TimeSpan timeout)
+    private static async Task<string> WaitForAdapterAsync(TimeSpan timeout, Process singBox)
     {
         var expectedIp = IPAddress.Parse(AdapterIp);
         var deadline = DateTime.UtcNow + timeout;
@@ -805,8 +805,17 @@ public sealed class VpnEngine : INotifyPropertyChanged
             // (172.19.0.1), который sing-box всегда присваивает адаптеру сам и который уже
             // подтверждённо активен в её логе — это прямое доказательство готовности адаптера,
             // не зависящее от текста Description.
+            //
+            // Совпадение только по Description "Wintun" убрано: от аварийно оборванной прошлой
+            // сессии в системе может остаться ОТКЛЮЧЁННЫЙ Wintun-адаптер — он находился за
+            // 0,1с, подключение объявлялось успешным, а sing-box, так и не сумев открыть
+            // интерфейс, падал через 15с ("configure tun interface: The system cannot find
+            // the file specified") — у пользователя это выглядело как "туннель рвётся".
+            // Теперь готовность — только поднятый адаптер с нашим адресом 172.19.0.1, а смерть
+            // sing-box во время ожидания сразу даёт ошибку (и повтор попытки подключения).
+            if (singBox.HasExited) break;
             var candidate = NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(n =>
-                n.Description.Contains("Wintun", StringComparison.OrdinalIgnoreCase) ||
+                n.OperationalStatus == OperationalStatus.Up &&
                 n.GetIPProperties().UnicastAddresses.Any(a => a.Address.Equals(expectedIp)));
             if (candidate != null) return candidate.Name;
             await Task.Delay(200).ConfigureAwait(false);
@@ -817,6 +826,10 @@ public sealed class VpnEngine : INotifyPropertyChanged
         // пересозданием иногда уходит больше времени, чем на чистый старт — включаем хвост его
         // лога прямо в текст ошибки, чтобы не приходилось лезть в файл отдельно за диагнозом.
         var tail = TryReadLogTail(Path.Combine(StateDir, "logs", "sing-box.log"), 800);
+        if (singBox.HasExited)
+            throw new InvalidOperationException(
+                "sing-box.exe не смог поднять сетевой адаптер." +
+                (tail != null ? $" Последнее в логе: …{tail}" : " См. журнал sing-box."));
         throw new TimeoutException(
             "sing-box.exe не создал сетевой адаптер за отведённое время." +
             (tail != null ? $" Последнее в логе: …{tail}" : " См. Runtime/logs/sing-box.log"));
