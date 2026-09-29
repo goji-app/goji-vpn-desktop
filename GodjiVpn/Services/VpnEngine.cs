@@ -323,7 +323,22 @@ public sealed class VpnEngine : INotifyPropertyChanged
             ["listen"] = "127.0.0.1",
             ["port"] = SocksPort,
             ["protocol"] = "socks",
-            ["settings"] = new JsonObject { ["udp"] = true }
+            ["settings"] = new JsonObject { ["udp"] = true },
+            // sing-box читает из TUN уже IP-пакеты — DNS давно отработал на уровне ОС, и
+            // CONNECT в этот SOCKS всегда приходит с IP, а не доменом. Без sniffing ни одно
+            // доменное правило routing.rules (наше .ru → direct ниже, ru-domain-direct и
+            // трекеры из профиля, "Сайты мимо VPN") для системного трафика не срабатывало —
+            // всё молча уходило в catch-all прокси. Sniffing достаёт домен из SNI/Host/QUIC
+            // первых байт соединения — как в Android (GodjiVpnService.establishTunnel).
+            // routeOnly: домен — только для выбора маршрута, соединение идёт на исходный IP
+            // без повторного резолва (повторный DNS-запрос xray.exe рисковал бы петлёй через
+            // TUN — см. комментарий про "no such host" ниже).
+            ["sniffing"] = new JsonObject
+            {
+                ["enabled"] = true,
+                ["destOverride"] = new JsonArray("http", "tls", "quic"),
+                ["routeOnly"] = true
+            }
         });
 
         // sing-box.auto_detect_interface (см. WriteSingBoxConfig) привязывает к физическому
