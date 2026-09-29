@@ -19,6 +19,10 @@
                      обязательно {DynamicResource}, не {StaticResource}: только Dynamic
                      переоценивается, когда ThemeService меняет словарь в рантайме. -->
                 <ResourceDictionary Source="Themes/LightTheme.xaml"/>
+                <!-- Иконки и компоненты дизайна v5 «Стекло». Тема ОБЯЗАТЕЛЬНО остаётся первым
+                     элементом — ThemeService подменяет именно MergedDictionaries[0]. -->
+                <ResourceDictionary Source="Themes/Icons.xaml"/>
+                <ResourceDictionary Source="Themes/Glass.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
@@ -44,29 +48,24 @@
             <FontFamily x:Key="ManropeExtraBoldFamily">pack://application:,,,/Assets/Fonts/#Manrope ExtraBold</FontFamily>
             <FontFamily x:Key="InstrumentSerifFamily">pack://application:,,,/Assets/Fonts/#Instrument Serif</FontFamily>
 
-            <!-- Редизайн "Tactical Sand & Void" — Space Grotesk сменил Instrument Serif как
-                 шрифт заголовков экранов (см. Headline ниже), JetBrains Mono — служебные
-                 подписи/цифры телеметрии (пинг, скорость, IP). Оба — единственные переменные
-                 (variable) TTF, доступные для этих семейств в google/fonts (нет статичных
-                 начертаний) — в отличие от ManropeFamily* выше (отдельный файл на начертание),
-                 разные насыщенности здесь задаются через FontWeight на самом TextBlock/Run
-                 (WPF интерполирует ось веса переменного шрифта), а не через отдельные ключи-
-                 семейства.-->
-            <FontFamily x:Key="SpaceGroteskFamily">pack://application:,,,/Assets/Fonts/#Space Grotesk</FontFamily>
-            <FontFamily x:Key="JetBrainsMonoFamily">pack://application:,,,/Assets/Fonts/#JetBrains Mono</FontFamily>
+            <!-- v5 «Стекло»: во всём приложении один шрифт — Manrope (как в эталоне и в Android
+                 Type.kt). SpaceGroteskFamily / JetBrainsMonoFamily оставлены ПСЕВДОНИМАМИ Manrope,
+                 чтобы места, которые на них ссылаются, рисовали Manrope без правок. WPF видит
+                 все статичные начертания Manrope одним семейством "Manrope" (ExtraLight…ExtraBold),
+                 насыщенность задаётся FontWeight. -->
+            <FontFamily x:Key="SpaceGroteskFamily">pack://application:,,,/Assets/Fonts/#Manrope</FontFamily>
+            <FontFamily x:Key="JetBrainsMonoFamily">pack://application:,,,/Assets/Fonts/#Manrope</FontFamily>
 
             <Style TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
                 <Setter Property="FontFamily" Value="{StaticResource ManropeFamily}"/>
             </Style>
 
-            <!-- Headline — Space Grotesk SemiBold (редизайн, была Instrument Serif), для крупных
-                 заголовков экранов ("Твоя подписка", "Где выйти в сеть", приветствие на глобусе
-                 и т.п.). -->
+            <!-- Headline — заголовки экранов v5: Manrope Bold 30. -->
             <Style x:Key="Headline" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                <Setter Property="FontFamily" Value="{StaticResource SpaceGroteskFamily}"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="FontSize" Value="27"/>
+                <Setter Property="FontFamily" Value="{StaticResource ManropeFamily}"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="FontSize" Value="30"/>
             </Style>
 
             <Style x:Key="MutedText" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">

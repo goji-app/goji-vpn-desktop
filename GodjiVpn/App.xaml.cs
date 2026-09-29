@@ -46,8 +46,12 @@ public partial class App : Application
 
         var activationUrl = e.Args.FirstOrDefault(a => a.StartsWith("godjivpn://", StringComparison.OrdinalIgnoreCase));
 
+        // GODJI_UI_PREVIEW=1 — второй экземпляр для сверки интерфейса с эталоном, пока рядом
+        // работает установленный клиент (запуск с __COMPAT_LAYER=RunAsInvoker, без повышения
+        // прав — VPN в таком режиме не поднимется, только UI). В обычной работе не задаётся.
+        var uiPreview = Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW") == "1";
         _singleInstance = new SingleInstanceService();
-        if (!_singleInstance.TryAcquire())
+        if (!uiPreview && !_singleInstance.TryAcquire())
         {
             // Уже есть работающий экземпляр (мы запущены заново кликом по godjivpn://
             // после возврата из браузера с OAuth-логином) — передаём ему URL и молча

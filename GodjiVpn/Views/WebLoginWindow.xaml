@@ -4,7 +4,7 @@
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="Вход через сайт" Height="720" Width="460"
         MinHeight="480" MinWidth="360"
-        Background="{DynamicResource BgBrush}"
+        Background="{DynamicResource BgSolidBrush}"
         WindowStartupLocation="CenterOwner"
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">

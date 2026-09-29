@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Godji VPN" Width="360" SizeToContent="Height"
         MinWidth="320" ResizeMode="NoResize"
-        Background="{DynamicResource BgBrush}"
+        Background="{DynamicResource BgSolidBrush}"
         WindowStartupLocation="CenterOwner"
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">

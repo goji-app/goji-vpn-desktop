@@ -11,7 +11,7 @@
          глобусом (пока он рендерится/если canvas не полностью его перекрывает) была видна
          светлая заплатка. Transparent — тогда фон отдаёт вот этот Grid снизу, с
          DynamicResource, который подхватывает тему сам. -->
-    <Grid Background="{DynamicResource SurfaceBrush}">
+    <Grid Background="Transparent">
         <wv2:WebView2CompositionControl x:Name="Web" DefaultBackgroundColor="Transparent"/>
     </Grid>
 </UserControl>
