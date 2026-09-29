@@ -167,6 +167,7 @@ public sealed partial class PlansViewModel : ObservableObject
 
     private readonly ApiClient _api;
     private readonly SubscriptionRepository _subscription;
+    private readonly TokenStore _tokenStore;
     private List<PlanInfo> _rawPlans = new();
     private List<NewsItem> _allNews = new();
 
@@ -278,10 +279,11 @@ public sealed partial class PlansViewModel : ObservableObject
         SelectPeriod(Periods[value].Months);
     }
 
-    public PlansViewModel(ApiClient api, SubscriptionRepository subscription)
+    public PlansViewModel(ApiClient api, SubscriptionRepository subscription, TokenStore tokenStore)
     {
         _api = api;
         _subscription = subscription;
+        _tokenStore = tokenStore;
     }
 
     public async Task LoadAsync()
@@ -547,6 +549,25 @@ public sealed partial class PlansViewModel : ObservableObject
     private void CopyReferralLink()
     {
         if (Referral is { } r) Clipboard.SetText(r.Link);
+    }
+
+    /// <summary>Перенос входа по QR (порт 7060e31): в код кладётся текущая сессия — тот же
+    /// JWT и refresh-токен, что в TokenStore, — и момент создания. Бэкенд принимает JWT как
+    /// обычный Bearer с любого устройства; новое устройство само займёт место в лимите.
+    /// Приложение Goji на телефоне проверяет срок (10 минут) и саму сессию до сохранения.</summary>
+    [RelayCommand]
+    private void ShowTransferQr()
+    {
+        var token = _tokenStore.AccessToken;
+        if (string.IsNullOrEmpty(token)) return;
+        var uri = "godjivpn://transfer?s=" + Uri.EscapeDataString(token);
+        if (_tokenStore.RefreshToken is { Length: > 0 } refresh) uri += "&r=" + Uri.EscapeDataString(refresh);
+        uri += "&t=" + DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        new QrWindow("Вход на другом устройстве",
+            "На новом устройстве открой Goji → «Войти по QR-коду» и наведи камеру на код. Устройство займёт одно место в лимите подписки.",
+            uri,
+            warning: "Код даёт вход в твой аккаунт — не показывай и не отправляй его посторонним. Действует 10 минут.",
+            autoClose: TimeSpan.FromMinutes(10)) { Owner = Application.Current.MainWindow }.ShowDialog();
     }
 
     [RelayCommand]

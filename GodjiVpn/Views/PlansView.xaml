@@ -184,6 +184,30 @@
                 </controls:GlassPanel>
             </StackPanel>
 
+            <!-- Перенос входа на другое устройство по QR — без почты (порт 7060e31). -->
+            <Button Style="{StaticResource BareButton}" controls:Press.Scale="0.98" Margin="0,12,0,0" Command="{Binding ShowTransferQrCommand}"
+                    AutomationProperties.Name="Перенести на другое устройство">
+                <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Padding="14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="36" Height="36" CornerRadius="18" Background="{DynamicResource TealTintBrush}">
+                            <Path Data="{StaticResource IconQr}" Style="{StaticResource Icon}" Width="17" Height="17" Fill="{DynamicResource TealDeepBrush}"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                            <TextBlock Text="Перенести на другое устройство" FontWeight="Bold" FontSize="13.5"/>
+                            <TextBlock Text="Вход без почты: покажи QR-код новому телефону" FontWeight="Medium" FontSize="11"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0" LineHeight="15.4"/>
+                        </StackPanel>
+                        <Path Grid.Column="2" Data="{StaticResource IconChevronRight}" Style="{StaticResource Icon}" Width="16" Height="16"
+                              Fill="{DynamicResource TextSecondaryBrush}"/>
+                    </Grid>
+                </controls:GlassPanel>
+            </Button>
+
             <!-- Новости: подпись секции + "Показать все" / пейджер "‹ 1 / 3 ›", карточки r24. -->
             <StackPanel Visibility="{Binding HasNews, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Grid Margin="8,20,8,0">
