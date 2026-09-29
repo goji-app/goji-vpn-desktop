@@ -198,6 +198,15 @@
                     </StackPanel>
                 </controls:GlassPanel>
 
+                <!-- Подключение: правила, которые применяются при установке туннеля. -->
+                <TextBlock Text="ПОДКЛЮЧЕНИЕ" Style="{StaticResource SectionLabel}" Margin="8,16,8,0"/>
+                <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,8,0,0">
+                    <StackPanel>
+                        <Button Style="{StaticResource LinkRowButton}" Content="Сайты мимо VPN" Tag="Домены, которые открываются напрямую"
+                                Command="{Binding OpenBypassCommand}"/>
+                    </StackPanel>
+                </controls:GlassPanel>
+
                 <TextBlock Text="ПОДДЕРЖКА" Style="{StaticResource SectionLabel}" Margin="8,16,8,0"/>
                 <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,8,0,0">
                     <Button Style="{StaticResource LinkRowButton}" Content="Написать в поддержку" Tag="Обращения и переписка прямо в приложении"
@@ -363,6 +372,118 @@
                         <TextBox Style="{StaticResource GlassTextBox}" FontSize="12.5"
                                  Text="{Binding PingTestUrl, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
+                </controls:GlassPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ═══ Подэкран: Сайты мимо VPN ═══ -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding IsBypassPage, Converter={StaticResource BoolToVisibilityConverter}}">
+            <StackPanel Margin="16,16,16,12">
+                <StackPanel Orientation="Horizontal">
+                    <Button Style="{StaticResource BackButton}"/>
+                    <TextBlock Text="Сайты мимо VPN" Style="{StaticResource SubTitle}"/>
+                </StackPanel>
+                <TextBlock Text="Трафик к этим сайтам (и их поддоменам) пойдёт напрямую через твоего провайдера, остальное — через VPN. Удобно для банков, госуслуг и локальных сервисов, которые не любят VPN."
+                           FontWeight="Medium" FontSize="12" LineHeight="17" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"
+                           Margin="8,10,8,10"/>
+
+                <!-- Поле + "Добавить": капсула на Chip, обводка краснеет при ошибке. -->
+                <controls:PillBorder Height="50" Padding="16,0,6,0" BorderThickness="1" Background="{DynamicResource ChipBrush}">
+                    <controls:PillBorder.Style>
+                        <Style TargetType="controls:PillBorder">
+                            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding BypassError}" Value="True">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </controls:PillBorder.Style>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding BypassInput, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"
+                                 FontSize="13.5" FontWeight="SemiBold" BorderThickness="0" Background="Transparent" Padding="0"
+                                 AutomationProperties.Name="Домен" KeyDown="OnBypassKeyDown"/>
+                        <TextBlock Text="Например, sberbank.ru" FontWeight="Medium" FontSize="13.5" Foreground="{DynamicResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" Margin="2,0,0,0" IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding BypassInput}" Value="">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <Button Grid.Column="1" Style="{StaticResource AccentPillButton}" Height="38" FontSize="12.5" Margin="10,0,0,0"
+                                Content="Добавить" Command="{Binding AddBypassCommand}"/>
+                    </Grid>
+                </controls:PillBorder>
+                <TextBlock Text="Это не похоже на адрес сайта" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource DangerBrush}"
+                           Margin="12,8,12,0" Visibility="{Binding BypassError, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <Border CornerRadius="20" Background="{DynamicResource TealTintBrush}" Padding="14,8,8,8" Margin="0,10,0,0"
+                        Visibility="{Binding ShowBypassApply, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Изменения применятся после переподключения VPN" FontWeight="SemiBold" FontSize="12" LineHeight="16"
+                                   TextWrapping="Wrap" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Style="{StaticResource ChipButton}" Content="Применить" Margin="10,0,0,0"
+                                Command="{Binding ApplyBypassCommand}"/>
+                    </Grid>
+                </Border>
+
+                <TextBlock Text="{Binding BypassListLabel}" Style="{StaticResource SectionLabel}" Margin="8,16,8,0"/>
+                <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,8,0,0">
+                    <Grid>
+                        <TextBlock Text="Список пуст — весь трафик идёт через VPN." FontWeight="Medium" FontSize="12" LineHeight="17" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" Margin="14,13"
+                                   Visibility="{Binding BypassEmpty, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        <ItemsControl ItemsSource="{Binding BypassDomains}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <Rectangle x:Name="Sep" Style="{StaticResource Hair}"/>
+                                        <Grid Margin="14,10,10,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Shown}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                <TextBlock Text="вместе с поддоменами" FontWeight="Medium" FontSize="11" Margin="0,1,0,0"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Style="{StaticResource BareButton}" Width="28" Height="28" Margin="12,0,0,0"
+                                                    AutomationProperties.Name="Удалить"
+                                                    Command="{Binding DataContext.RemoveBypassCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <Border CornerRadius="14" Background="{DynamicResource HairBrush}">
+                                                    <Path Data="{StaticResource IconClose}" Style="{StaticResource Icon}" Width="12" Height="12"
+                                                          Fill="{DynamicResource TextPrimaryBrush}"/>
+                                                </Border>
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}">
+                                            <Setter TargetName="Sep" Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
                 </controls:GlassPanel>
             </StackPanel>
         </ScrollViewer>

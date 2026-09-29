@@ -32,9 +32,15 @@ public sealed partial class ThemeModeItem : ObservableObject
     [ObservableProperty] private bool isSelected;
 }
 
+public sealed class BypassDomainItem
+{
+    public required string Domain { get; init; }
+    public required string Shown { get; init; }
+}
+
 /// <summary>Подэкраны Настроек — в Android это отдельные маршруты навигации
 /// (PingSettingsScreen, LogViewerDialog); здесь — подмена содержимого вкладки.</summary>
-public enum SettingsPage { Main, Ping, Log }
+public enum SettingsPage { Main, Ping, Log, Bypass }
 
 /// <summary>Аналог SettingsScreen.kt — версия/HWID (About), просмотр логов вместо отдельного
 /// LogViewerDialog.kt (здесь один экран проще нескольких диалогов на маленьком приложении),
@@ -50,6 +56,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ThemeService _theme;
     private readonly UpdateService _updateService;
     private readonly ApiClient _api;
+    private readonly AppSettings _appSettings;
 
     private static string LogsDir => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GodjiVpn", "logs");
@@ -129,12 +136,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsMainPage), nameof(IsPingPage), nameof(IsLogPage))]
+    [NotifyPropertyChangedFor(nameof(IsMainPage), nameof(IsPingPage), nameof(IsLogPage), nameof(IsBypassPage))]
     private SettingsPage page = SettingsPage.Main;
 
     public bool IsMainPage => Page == SettingsPage.Main;
     public bool IsPingPage => Page == SettingsPage.Ping;
     public bool IsLogPage => Page == SettingsPage.Log;
+    public bool IsBypassPage => Page == SettingsPage.Bypass;
     public bool IsLogEmpty => string.IsNullOrWhiteSpace(LogContent);
 
     [ObservableProperty]
@@ -213,8 +221,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     public event Action? RequestLogout;
 
     public SettingsViewModel(TokenStore tokenStore, VpnEngine vpnEngine, HwidProvider hwid, PingSettings pingSettings,
-        ThemeService theme, UpdateService updateService, ApiClient api)
+        ThemeService theme, UpdateService updateService, ApiClient api, AppSettings appSettings)
     {
+        _appSettings = appSettings;
         _tokenStore = tokenStore;
         _vpnEngine = vpnEngine;
         _hwid = hwid;
@@ -275,6 +284,64 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     [RelayCommand]
     private void Back() => Page = SettingsPage.Main;
+
+    // ── Сайты мимо VPN (порт 6803326) ──
+    public ObservableCollection<BypassDomainItem> BypassDomains { get; } = new();
+    [ObservableProperty] private string bypassInput = "";
+    [ObservableProperty] private bool bypassError;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowBypassApply))]
+    private bool bypassDirty;
+    public bool ShowBypassApply => BypassDirty && _vpnEngine.IsRunning;
+    public string BypassListLabel => $"САЙТЫ · {BypassDomains.Count}";
+    public bool BypassEmpty => BypassDomains.Count == 0;
+
+    partial void OnBypassInputChanged(string value) => BypassError = false;
+
+    [RelayCommand]
+    private void OpenBypass()
+    {
+        RefreshBypass();
+        BypassDirty = false;
+        Page = SettingsPage.Bypass;
+    }
+
+    [RelayCommand]
+    private void AddBypass()
+    {
+        if (string.IsNullOrWhiteSpace(BypassInput)) return;
+        var domain = AppSettings.NormalizeDomain(BypassInput);
+        if (domain == null) { BypassError = true; return; }
+        _appSettings.AddBypassDomain(domain);
+        BypassInput = "";
+        BypassDirty = true;
+        RefreshBypass();
+    }
+
+    [RelayCommand]
+    private void RemoveBypass(BypassDomainItem item)
+    {
+        _appSettings.RemoveBypassDomain(item.Domain);
+        BypassDirty = true;
+        RefreshBypass();
+    }
+
+    /// <summary>Правила xray читаются только при подключении — переподключаемся к тому же узлу.</summary>
+    [RelayCommand]
+    private async Task ApplyBypassAsync()
+    {
+        BypassDirty = false;
+        await _vpnEngine.ReconnectAsync();
+    }
+
+    private void RefreshBypass()
+    {
+        BypassDomains.Clear();
+        foreach (var d in _appSettings.BypassDomains)
+            BypassDomains.Add(new BypassDomainItem { Domain = d, Shown = AppSettings.ToDisplay(d) });
+        OnPropertyChanged(nameof(BypassListLabel));
+        OnPropertyChanged(nameof(BypassEmpty));
+    }
 
     /// <summary>Строки "О программе" копируются по нажатию (AboutRow в Android).</summary>
     [RelayCommand]

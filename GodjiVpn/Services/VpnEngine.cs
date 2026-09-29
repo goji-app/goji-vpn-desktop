@@ -120,8 +120,20 @@ public sealed class VpnEngine : INotifyPropertyChanged
     /// (67c25fd: GodjiVpnService.performConnect retries up to 3 times).</summary>
     private const int MaxConnectAttempts = 3;
 
+    private VlessNode? _lastNode;
+
+    /// <summary>Переподключение к тому же узлу — правила xray (например "Сайты мимо VPN")
+    /// читаются только при подключении.</summary>
+    public async Task ReconnectAsync()
+    {
+        if (_lastNode is not { } node || !IsRunning) return;
+        await DisconnectAsync().ConfigureAwait(false);
+        await ConnectAsync(node).ConfigureAwait(false);
+    }
+
     public async Task ConnectAsync(VlessNode node)
     {
+        _lastNode = node;
         await _lifecycleLock.WaitAsync().ConfigureAwait(false);
         try
         {
@@ -449,6 +461,8 @@ public sealed class VpnEngine : INotifyPropertyChanged
             });
         }
 
+        ApplyUserBypassDomains(config, physicalIp);
+
         // Реально пойманная ошибка (повторяется каждые ~15с всю сессию, не разовый глюк):
         // "dial tcp: lookup serv1.gojihub.xyz: no such host". Первая попытка исправить —
         // прописать serv1.gojihub.xyz и т.п. статикой в dns.hosts — НЕ помогла: ошибка
@@ -482,6 +496,41 @@ public sealed class VpnEngine : INotifyPropertyChanged
         var path = Path.Combine(StateDir, "xray-config.json");
         File.WriteAllText(path, config.ToJsonString());
         return path;
+    }
+
+    /// <summary>"Сайты мимо VPN" (Настройки → Подключение, порт 6803326): домены из
+    /// AppSettings (с поддоменами) — напрямую. Правило ставится ПЕРВЫМ, раньше любого правила
+    /// профиля и нашего .ru; домены распознаёт sniffing socks-инбаунда. Outbound — freedom
+    /// профиля ("direct", уже с sendThrough), а если его нет — свой с привязкой к физическому
+    /// адаптеру (без неё — та же петля через TUN, что описана выше).</summary>
+    private void ApplyUserBypassDomains(JsonObject config, string? physicalIp)
+    {
+        var domains = new AppSettings().BypassDomains;
+        if (domains.Count == 0) return;
+        var outbounds = config["outbounds"]?.AsArray();
+        if (outbounds == null) { outbounds = new JsonArray(); config["outbounds"] = outbounds; }
+        var directTag = outbounds
+            .Where(ob => ob?["protocol"]?.GetValue<string>() == "freedom")
+            .Select(ob => ob?["tag"]?.GetValue<string>())
+            .FirstOrDefault(tag => !string.IsNullOrEmpty(tag));
+        if (directTag == null)
+        {
+            directTag = "user-bypass-direct";
+            var own = new JsonObject { ["tag"] = directTag, ["protocol"] = "freedom" };
+            if (!string.IsNullOrEmpty(physicalIp)) own["sendThrough"] = physicalIp;
+            outbounds.Add(own);
+        }
+        var routing = config["routing"]?.AsObject();
+        if (routing == null) { routing = new JsonObject { ["domainStrategy"] = "AsIs" }; config["routing"] = routing; }
+        var rules = routing["rules"]?.AsArray();
+        if (rules == null) { rules = new JsonArray(); routing["rules"] = rules; }
+        rules.Insert(0, new JsonObject
+        {
+            ["type"] = "field",
+            ["domain"] = new JsonArray(domains.Select(d => (JsonNode)JsonValue.Create("domain:" + d)!).ToArray()),
+            ["outboundTag"] = directTag
+        });
+        LogEngine($"bypass: {domains.Count} доменов мимо VPN → {directTag}");
     }
 
     /// <summary>Локальный адрес, который ОС выбрала бы для исходящего соединения к интернету
