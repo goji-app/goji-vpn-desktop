@@ -30,6 +30,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             switch (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_SCREEN"))
             {
+                case "shell":
+                    currentViewModel = _shell;
+                    break;
                 case "login":
                     currentViewModel = _login;
                     break;

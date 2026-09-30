@@ -110,6 +110,17 @@
         <Setter Property="HorizontalAlignment" Value="Center"/>
     </Style>
 
+    <!-- Цвет иконки — классом (а не локальным Fill): внутри шаблонов элементов списков
+         локальное значение проигрывает стилю с классом Path.icon. -->
+    <Style Selector="Path.icon.teal"><Setter Property="Fill" Value="{DynamicResource TealDeepBrush}"/></Style>
+    <Style Selector="Path.icon.accent"><Setter Property="Fill" Value="{DynamicResource TealBrush}"/></Style>
+    <Style Selector="Path.icon.danger"><Setter Property="Fill" Value="{DynamicResource DangerBrush}"/></Style>
+    <Style Selector="Path.icon.secondary"><Setter Property="Fill" Value="{DynamicResource TextSecondaryBrush}"/></Style>
+    <Style Selector="Path.icon.muted"><Setter Property="Fill" Value="{DynamicResource TextMutedBrush}"/></Style>
+    <Style Selector="Path.icon.terra"><Setter Property="Fill" Value="{DynamicResource TerracottaBrush}"/></Style>
+    <Style Selector="Path.icon.inkText"><Setter Property="Fill" Value="{DynamicResource InkBtnTextBrush}"/></Style>
+    <Style Selector="Path.icon.white"><Setter Property="Fill" Value="White"/></Style>
+
     <!-- ── Кнопки ── -->
     <Style Selector="Button.bare, Button.row, Button.accent, Button.ink, Button.chip, Button.circle, Button.link, Button.danger">
         <Setter Property="Cursor" Value="Hand"/>

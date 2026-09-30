@@ -17,7 +17,7 @@ public sealed partial class NodeItem : ObservableObject
     /// <summary>-2 = ещё не проверяли ("проверить"), -1 = недоступен, иначе — мс.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PingLabel))]
-    [NotifyPropertyChangedFor(nameof(PingLevel))]
+    [NotifyPropertyChangedFor(nameof(PingLevel), nameof(PingGood), nameof(PingMid), nameof(PingBad))]
     private int pingMs = -2;
     [ObservableProperty] private bool isSelected;
     [ObservableProperty]
@@ -40,6 +40,11 @@ public sealed partial class NodeItem : ObservableObject
         < 90 => PingLevel.Mid,
         _ => PingLevel.Bad
     };
+
+    // Для классов разметки Avalonia (в WPF были триггеры по PingLevel).
+    public bool PingGood => PingLevel == PingLevel.Good;
+    public bool PingMid => PingLevel == PingLevel.Mid;
+    public bool PingBad => PingLevel == PingLevel.Bad;
 
     /// <summary>Добавлен вручную по JSON-профилю (см. CustomNodeStore), а не пришёл с
     /// подписки — только у таких узлов показываем кнопку удаления.</summary>
@@ -102,6 +107,22 @@ public sealed partial class ServersViewModel : ObservableObject
         _subscription.PropertyChanged += (_, _) => RunOnUiThread(SyncFromRepository);
         _favorites.Changed += () => RunOnUiThread(SyncFromRepository);
         SyncFromRepository();
+    }
+
+    /// <summary>Только для превью-экземпляра (GODJI_UI_PREVIEW_DEMO=1): сверка вёрстки без подписки.</summary>
+    private void FillPreviewDemo()
+    {
+        (string Name, int Ping, bool Fav)[] demo =
+        {
+            ("🇳🇱 Нидерланды", 48, true), ("🇩🇪 Германия", 63, false), ("🇫🇮 Финляндия", 142, false),
+            ("🇹🇷 Турция", 311, false), ("🇺🇸 США", -1, false), ("🇰🇿 Казахстан", -2, false)
+        };
+        for (var i = 0; i < demo.Length; i++)
+            Nodes.Add(new NodeItem
+            {
+                Node = new VlessNode { Id = $"demo-{i}", Name = demo[i].Name, Host = "demo", Port = 443, ConnectPayloadJson = "{}" },
+                IsSelected = i == 0, PingMs = demo[i].Ping, IsFavorite = demo[i].Fav
+            });
     }
 
     [RelayCommand]
@@ -167,6 +188,7 @@ public sealed partial class ServersViewModel : ObservableObject
         }
         Nodes.Clear();
         foreach (var item in Sorted(newNodes)) Nodes.Add(item);
+        if (Nodes.Count == 0 && Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_DEMO") == "1") FillPreviewDemo();
     }
 
     /// <summary>Сортировки стабильные: при равенстве остаётся порядок подписки. Избранные идут

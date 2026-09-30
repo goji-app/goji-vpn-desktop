@@ -258,9 +258,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// поэтому 11 определяем по номеру сборки (от 22000).</summary>
     private static string BuildDeviceInfo()
     {
+        // На macOS Environment.OSVersion — версия macOS (например 15.1), архитектура — Apple
+        // Silicon или Intel.
         var v = Environment.OSVersion.Version;
-        var name = v.Major == 10 && v.Build >= 22000 ? "Windows 11" : $"Windows {v.Major}.{v.Minor}";
-        return $"{Environment.MachineName}, {name} ({v.Build})";
+        var arch = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture ==
+                   System.Runtime.InteropServices.Architecture.Arm64 ? "Apple Silicon" : "Intel";
+        return $"{Environment.MachineName}, macOS {v.Major}.{v.Minor} ({arch})";
     }
 
     [RelayCommand]

@@ -24,19 +24,18 @@
                         <TextBlock Text="Привет. Куда&#10;подключаемся сегодня?" FontWeight="SemiBold" FontSize="30" LineHeight="33" TextWrapping="Wrap"/>
 
                         <!-- "Впервые здесь?" — рабочий пробный период выдаёт бот. -->
-                        <Button Classes="bare" Margin="0,14,0,0" Command="{Binding OpenBotCommand}">
+                        <Button Classes="bare" HorizontalAlignment="Stretch" Margin="0,14,0,0" Command="{Binding OpenBotCommand}">
                             <c:GlassPanel Classes="flat" CornerRadius="20" Padding="12">
                                 <Grid ColumnDefinitions="Auto,*,Auto">
                                     <Border Width="36" Height="36" CornerRadius="18" Background="#2AABEE" VerticalAlignment="Center">
-                                        <Path Classes="icon" Width="17" Height="17" Fill="White" Margin="0,0,1,0"
+                                        <Path Classes="icon white" Width="17" Height="17" Margin="0,0,1,0"
                                               Data="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="11,0,8,0" VerticalAlignment="Center">
                                         <TextBlock Text="Впервые здесь?" FontWeight="Bold" FontSize="12.5"/>
                                         <TextBlock Classes="rowSub" Text="Сначала откройте бота в Telegram — там вы подтвердите, что не робот, и получите рабочий пробный период."/>
                                     </StackPanel>
-                                    <Path Grid.Column="2" Classes="icon" Data="{StaticResource IconChevronRight}" Width="18" Height="18"
-                                          Fill="{DynamicResource TextSecondaryBrush}"/>
+                                    <Path Grid.Column="2" Classes="icon secondary" Data="{StaticResource IconChevronRight}" Width="18" Height="18"/>
                                 </Grid>
                             </c:GlassPanel>
                         </Button>
@@ -94,7 +93,7 @@
                         <TextBlock Classes="muted" Text="Почта подтверждена" FontSize="12.5" HorizontalAlignment="Center" Margin="0,4,0,22"/>
                         <Border Width="88" Height="88" CornerRadius="44" Background="{DynamicResource TealBrush}" HorizontalAlignment="Center"
                                 BoxShadow="0 0 28 0 #B300A79B">
-                            <Path Classes="icon" Data="{StaticResource IconCheck}" Width="44" Height="44" Fill="White"/>
+                            <Path Classes="icon white" Data="{StaticResource IconCheck}" Width="44" Height="44"/>
                         </Border>
                     </StackPanel>
                 </Panel>

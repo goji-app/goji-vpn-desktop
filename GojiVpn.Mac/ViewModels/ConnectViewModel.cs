@@ -131,21 +131,22 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
 
     /// <summary>Физическое подключение с маршрутом по умолчанию, не считая самого туннеля (Wintun)
     /// и прочих виртуальных адаптеров.</summary>
+    /// <summary>Физическая сеть на macOS: поднятый enN-интерфейс с IPv4-адресом (не
+    /// link-local); Wi-Fi это или кабель — по таблице аппаратных портов networksetup (сам .NET
+    /// на macOS часто сообщает Wi-Fi-адаптер как Ethernet). utun туннеля сюда не попадает.</summary>
     private void RefreshNetwork()
     {
         try
         {
             var active = NetworkInterface.GetAllNetworkInterfaces()
                 .Where(n => n.OperationalStatus == OperationalStatus.Up
-                            && n.NetworkInterfaceType is not (NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel)
-                            && !n.Description.Contains("Wintun", StringComparison.OrdinalIgnoreCase)
-                            && !n.Description.Contains("Virtual", StringComparison.OrdinalIgnoreCase)
-                            && !n.Description.Contains("Hyper-V", StringComparison.OrdinalIgnoreCase)
-                            && n.GetIPProperties().GatewayAddresses.Any(g => g.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
-                                                                           && !g.Address.Equals(System.Net.IPAddress.Any)))
+                            && n.Name.StartsWith("en", StringComparison.Ordinal)
+                            && n.GetIPProperties().UnicastAddresses.Any(a =>
+                                a.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork &&
+                                !a.Address.ToString().StartsWith("169.254.", StringComparison.Ordinal)))
                 .ToList();
-            var wifi = active.FirstOrDefault(n => n.NetworkInterfaceType == NetworkInterfaceType.Wireless80211);
-            if (wifi != null) { NetLabel = "Wi-Fi"; HasNetwork = true; }
+            var wifiDevices = MacHardwarePorts.WifiDevices;
+            if (active.Any(n => wifiDevices.Contains(n.Name))) { NetLabel = "Wi-Fi"; HasNetwork = true; }
             else if (active.Count > 0) { NetLabel = "Ethernet"; HasNetwork = true; }
             else { NetLabel = "Нет сети"; HasNetwork = false; }
         }
