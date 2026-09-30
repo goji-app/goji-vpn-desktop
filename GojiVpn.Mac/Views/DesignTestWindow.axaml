@@ -1,0 +1,37 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:GodjiVpn.Controls"
+        x:Class="GodjiVpn.Views.DesignTestWindow"
+        Title="Goji VPN" Width="440" Height="860" Background="{DynamicResource BgSolidBrush}">
+    <Panel>
+        <c:GlassBackdrop/>
+        <StackPanel Margin="16" Spacing="12">
+            <TextBlock Classes="title" Text="Настройки"/>
+            <TextBlock Classes="section" Text="ВНЕШНИЙ ВИД"/>
+            <c:GlassPanel Classes="card" CornerRadius="24">
+                <StackPanel>
+                    <Button Classes="row">
+                        <StackPanel>
+                            <TextBlock Classes="rowTitle" Text="Настройки пинга"/>
+                            <TextBlock Classes="rowSub" Text="Способ проверки и URL теста"/>
+                        </StackPanel>
+                    </Button>
+                    <Rectangle Classes="hair"/>
+                    <Grid ColumnDefinitions="*,Auto" Margin="14,13">
+                        <TextBlock Classes="rowTitle" Text="Переключатель" VerticalAlignment="Center"/>
+                        <ToggleButton Grid.Column="1" Classes="switch" IsChecked="True"/>
+                    </Grid>
+                </StackPanel>
+            </c:GlassPanel>
+            <Button Classes="accent" Content="Продлить"/>
+            <Button Classes="ink" Content="Продолжить через сайт"/>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button Classes="chip" Content="Проверить обновления"/>
+                <Button Classes="circle"><Path Classes="icon" Data="{StaticResource IconRefresh}" Width="16" Height="16" Fill="{DynamicResource TealDeepBrush}"/></Button>
+            </StackPanel>
+            <TextBox Classes="glass" Watermark="Email"/>
+            <Button Classes="link" Content="Через email и код из письма"/>
+            <c:GlassPanel Classes="pill" HorizontalAlignment="Left" Padding="13,8"><TextBlock Text="Goji" FontWeight="Bold"/></c:GlassPanel>
+        </StackPanel>
+    </Panel>
+</Window>

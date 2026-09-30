@@ -11,8 +11,9 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_THEME") == "dark") RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-            desktop.MainWindow = new Window { Title = "Goji VPN", Width = 440, Height = 860 };
+            desktop.MainWindow = new Views.DesignTestWindow();
         base.OnFrameworkInitializationCompleted();
     }
 }

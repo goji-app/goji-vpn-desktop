@@ -1,7 +1,19 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="GodjiVpn.App">
+             x:Class="GodjiVpn.App"
+             Name="Goji VPN"
+             RequestedThemeVariant="Light">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://GojiVpn/Themes/Tokens.axaml"/>
+                <ResourceInclude Source="avares://GojiVpn/Themes/Icons.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <FontFamily x:Key="Manrope">avares://GojiVpn/Assets/Fonts#Manrope</FontFamily>
+        </ResourceDictionary>
+    </Application.Resources>
     <Application.Styles>
         <FluentTheme/>
+        <StyleInclude Source="avares://GojiVpn/Themes/Glass.axaml"/>
     </Application.Styles>
 </Application>
