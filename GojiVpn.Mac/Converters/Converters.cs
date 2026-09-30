@@ -42,4 +42,16 @@ public static class Conv
     public static readonly IValueConverter NonZero = new FuncValueConverter<int, bool>(v => v != 0);
 
     public static readonly IValueConverter IsZero = new FuncValueConverter<int, bool>(v => v == 0);
+
+    /// <summary>int == ConverterParameter (номер вкладки/страницы).</summary>
+    public static readonly IValueConverter IntEquals = new IntEqualsConverter();
+
+    private sealed class IntEqualsConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            value is int i && int.TryParse(parameter?.ToString(), out var p) && i == p;
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
 }

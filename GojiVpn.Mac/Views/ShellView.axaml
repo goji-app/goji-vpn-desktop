@@ -1,0 +1,75 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:GodjiVpn.Controls"
+             xmlns:conv="using:GodjiVpn.Converters"
+             x:Class="GodjiVpn.Views.ShellView">
+    <!-- Оболочка: четыре вкладки и плавающая стеклянная панель снизу, под выбранной вкладкой
+         скользит "линза" — как ShellView Windows-клиента. -->
+    <UserControl.Styles>
+        <Style Selector="Button.tab">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Button.tab.selected">
+            <Setter Property="Foreground" Value="{DynamicResource TealDeepBrush}"/>
+        </Style>
+        <Style Selector="Button.tab Path">
+            <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+            <Setter Property="StrokeJoin" Value="Round"/>
+        </Style>
+        <Style Selector="Button.tab TextBlock">
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,3,0,0"/>
+        </Style>
+    </UserControl.Styles>
+    <Panel>
+        <Panel Margin="0,0,0,84">
+            <ContentControl Content="{Binding Connect}" IsVisible="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=0}"/>
+            <ContentControl Content="{Binding Servers}" IsVisible="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=1}"/>
+            <ContentControl Content="{Binding Plans}" IsVisible="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=2}"/>
+            <ContentControl Content="{Binding Settings}" IsVisible="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=3}"/>
+        </Panel>
+
+        <c:GlassPanel Classes="strong" CornerRadius="999" Height="64" VerticalAlignment="Bottom" Margin="14,0,14,10" Padding="5">
+            <Panel Name="TabHost">
+                <c:GlassPanel Name="Lens" Classes="pill" Tint="{DynamicResource LensBrush}" HorizontalAlignment="Left"/>
+                <UniformGrid Rows="1" Columns="4">
+                    <Button Classes="bare tab" Tag="0" Click="OnTabClick"
+                            Classes.selected="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=0}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Viewbox Width="21" Height="21"><Canvas Width="24" Height="24"><Path Data="{StaticResource TabIconHome}"/></Canvas></Viewbox>
+                            <TextBlock Text="Главная"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="bare tab" Tag="1" Click="OnTabClick"
+                            Classes.selected="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=1}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Viewbox Width="21" Height="21"><Canvas Width="24" Height="24"><Path Data="{StaticResource TabIconServers}"/></Canvas></Viewbox>
+                            <TextBlock Text="Серверы"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="bare tab" Tag="2" Click="OnTabClick"
+                            Classes.selected="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=2}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Viewbox Width="21" Height="21"><Canvas Width="24" Height="24"><Path Data="{StaticResource TabIconPlans}"/></Canvas></Viewbox>
+                            <TextBlock Text="Подписка"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="bare tab" Tag="3" Click="OnTabClick"
+                            Classes.selected="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=3}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Viewbox Width="21" Height="21"><Canvas Width="24" Height="24"><Path Data="{StaticResource TabIconSettings}"/></Canvas></Viewbox>
+                            <TextBlock Text="Настройки"/>
+                        </StackPanel>
+                    </Button>
+                </UniformGrid>
+            </Panel>
+        </c:GlassPanel>
+    </Panel>
+</UserControl>

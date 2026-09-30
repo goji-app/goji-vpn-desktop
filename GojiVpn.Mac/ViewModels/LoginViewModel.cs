@@ -25,7 +25,11 @@ public sealed partial class LoginViewModel : ObservableObject
     [ObservableProperty] private string email = "";
     [ObservableProperty] private string code = "";
     [ObservableProperty] private bool otpSent;
-    [ObservableProperty] private bool isBusy;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VerifyHint))]
+    private bool isBusy;
+
+    public string VerifyHint => IsBusy ? "Проверяем…" : "Проверка запустится сама, как только введёшь все цифры";
     [ObservableProperty] private string? errorMessage;
     [ObservableProperty] private string? infoMessage;
     /// <summary>Полноэкранный успех (галочка) после верного кода, перед переходом дальше —
