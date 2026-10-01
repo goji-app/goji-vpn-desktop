@@ -6,7 +6,7 @@
 | Папка | Система | Стек |
 |---|---|---|
 | [`windows/`](windows) | Windows 10/11 | WPF / .NET 8, Xray-core + sing-box (Wintun) |
-| [`macos/`](macos) | macOS 12+ (Apple Silicon и Intel) | Avalonia 11 / .NET 8, Xray-core + sing-box (TUN) |
+| [`macos/`](macos) | macOS 10.15+ на Intel, 11+ на Apple Silicon | Avalonia 11 / .NET 8, Xray-core + sing-box (TUN) |
 
 Android-версия — [goji-vpn-android](https://github.com/goji-app/goji-vpn-android).
 

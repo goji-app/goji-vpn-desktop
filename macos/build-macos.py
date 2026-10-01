@@ -42,6 +42,10 @@ EXE_NAME = "GojiVpn"
 BUNDLE_ID = "xyz.gojihub.vpn.mac"
 MACHO_MAGIC = {b"\xcf\xfa\xed\xfe", b"\xce\xfa\xed\xfe", b"\xca\xfe\xba\xbe", b"\xfe\xed\xfa\xcf"}
 ON_MAC = sys.platform == "darwin"
+# Нижняя граница macOS: её задаёт .NET 8 (10.15 на Intel, 11.0 на Apple Silicon — раньше
+# Apple Silicon не бывает). Ядро собрано под неё же (Runtime/build-legacy-cores.sh).
+MIN_OS = {"x64": "10.15", "arm64": "11.0"}
+CPU_ARCH = {0x01000007: "x64", 0x0100000C: "arm64"}
 
 # Окно установщика (в точках): значок приложения слева, "Программы" справа.
 DMG_W, DMG_H = 640, 420
@@ -119,7 +123,7 @@ def dmg_background(path, scale):
     img.save(path)
 
 
-def info_plist(ver):
+def info_plist(ver, min_os):
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -133,7 +137,7 @@ def info_plist(ver):
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleVersion</key><string>{ver}</string>
     <key>CFBundleShortVersionString</key><string>{ver}</string>
-    <key>LSMinimumSystemVersion</key><string>12.0</string>
+    <key>LSMinimumSystemVersion</key><string>{min_os}</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSRequiresAquaSystemAppearance</key><false/>
@@ -158,6 +162,45 @@ def patch_apphost(src, dst):
         f.write(data)
     os.chmod(dst, 0o755)
     os.remove(src)
+
+
+def macho_min_os(path):
+    """[(arch, minos)] по LC_BUILD_VERSION / LC_VERSION_MIN_MACOSX всех срезов Mach-O."""
+    with open(path, "rb") as f:
+        data = f.read()
+    offsets = [0]
+    if data[:4] == b"\xca\xfe\xba\xbe":  # fat (universal)
+        n = struct.unpack_from(">I", data, 4)[0]
+        offsets = [struct.unpack_from(">I", data, 8 + i * 20 + 8)[0] for i in range(n)]
+    result = []
+    for off in offsets:
+        if struct.unpack_from("<I", data, off)[0] != 0xFEEDFACF:
+            continue
+        cpu, _, _, ncmds = struct.unpack_from("<iiII", data, off + 4)
+        p = off + 32
+        for _ in range(ncmds):
+            cmd, size = struct.unpack_from("<II", data, p)
+            if cmd in (0x32, 0x24):
+                v = struct.unpack_from("<I", data, p + (12 if cmd == 0x32 else 8))[0]
+                result.append((CPU_ARCH.get(cpu, hex(cpu)), (v >> 16, (v >> 8) & 0xFF)))
+            p += size
+    return result
+
+
+def check_min_os(app, arch):
+    """Сборка не должна требовать macOS новее MIN_OS[arch] — иначе на старых системах не запустится."""
+    limit = tuple(int(x) for x in MIN_OS[arch].split("."))
+    bad = []
+    for dirpath, _, filenames in os.walk(app):
+        for name in filenames:
+            full = os.path.join(dirpath, name)
+            if is_macho(full):
+                for a, v in macho_min_os(full):
+                    if a == arch and v > limit:
+                        bad.append(f"{os.path.relpath(full, app)}: {v[0]}.{v[1]}")
+    if bad:
+        sys.exit(f"Требуют macOS новее {MIN_OS[arch]}:\n  " + "\n  ".join(bad))
+    print(f"OK: всё в сборке {arch} работает с macOS {MIN_OS[arch]}+", flush=True)
 
 
 def is_macho(path):
@@ -290,7 +333,9 @@ def build(arch, ver):
         shutil.copy2(src, runtime_dst)
     make_icns(os.path.join(res, "goji.icns"))
     with open(os.path.join(app, "Contents", "Info.plist"), "w", encoding="utf-8", newline="\n") as f:
-        f.write(info_plist(ver))
+        f.write(info_plist(ver, MIN_OS[arch]))
+
+    check_min_os(app, arch)
 
     os.makedirs(DIST, exist_ok=True)
     zip_path = os.path.join(DIST, f"GojiVPN-{ver}-macOS-{arch}.zip")

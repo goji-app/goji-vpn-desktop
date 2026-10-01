@@ -54,10 +54,20 @@ if /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null; then
   shot 3-x64-rosetta 40
   alive "x64 (Rosetta)"
   "$x64/Contents/Resources/app/Runtime/xray" version | head -1 || status=1
+  /usr/bin/arch -x86_64 "$x64/Contents/Resources/app/Runtime/sing-box" version | head -1 || status=1
   stop_app
 else
   echo "Rosetta нет — Intel-сборку не проверяю"
 fi
+
+echo "== Ядро и TLS: проверка сертификатов системными корнями (патч crypto/x509 для старых macOS)"
+for app in "/Applications/Goji VPN.app" "out/osx-x64/Goji VPN.app"; do
+  rt="$app/Contents/Resources/app/Runtime"
+  run=""; case "$app" in *osx-x64*) run="/usr/bin/arch -x86_64";; esac
+  for f in xray sing-box; do printf '%s %s: ' "$app" "$f"; vtool -show-build "$rt/$f" | awk '/minos/{print "minos " $2; exit}'; done
+  if $run "$rt/xray" tls ping www.apple.com 2>&1 | grep -qi "succeeded"; then echo "OK: xray TLS"; else echo "FAIL: xray TLS"; $run "$rt/xray" tls ping www.apple.com 2>&1 | tail -5; status=1; fi
+  if $run "$rt/sing-box" tools fetch https://www.apple.com/ > /dev/null 2>smoke/sb-fetch.err; then echo "OK: sing-box TLS"; else echo "FAIL: sing-box TLS"; cat smoke/sb-fetch.err; status=1; fi
+done
 
 echo "== Журналы приложения"
 find "$HOME/Library/Application Support" "$HOME/.local/share" -path "*GodjiVpn*" -name "*.log" 2>/dev/null | while read -r f; do
