@@ -70,5 +70,6 @@ echo "== Проверка"
 arm64/xray version | head -1
 arm64/sing-box version | head -1
 for f in x64/xray arm64/xray arm64/sing-box; do
-  printf '%s: ' "$f"; vtool -show-build "$f" | grep -E "minos" | head -1
+  # Для целей до 10.14 линкер пишет LC_VERSION_MIN_MACOSX (поле version), позже — LC_BUILD_VERSION (minos).
+  printf '%s: ' "$f"; vtool -show-build "$f" | grep -E "minos|^ *version" | head -1 || true
 done

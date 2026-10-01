@@ -64,7 +64,7 @@ echo "== Ядро и TLS: проверка сертификатов систем
 for app in "/Applications/Goji VPN.app" "out/osx-x64/Goji VPN.app"; do
   rt="$app/Contents/Resources/app/Runtime"
   run=""; case "$app" in *osx-x64*) run="/usr/bin/arch -x86_64";; esac
-  for f in xray sing-box; do printf '%s %s: ' "$app" "$f"; vtool -show-build "$rt/$f" | awk '/minos/{print "minos " $2; exit}'; done
+  for f in xray sing-box; do printf '%s %s: ' "$app" "$f"; vtool -show-build "$rt/$f" | awk '/minos|^ *version/{print $1 " " $2; exit}'; done
   if $run "$rt/xray" tls ping www.apple.com 2>&1 | grep -qi "succeeded"; then echo "OK: xray TLS"; else echo "FAIL: xray TLS"; $run "$rt/xray" tls ping www.apple.com 2>&1 | tail -5; status=1; fi
   if $run "$rt/sing-box" tools fetch https://www.apple.com/ > /dev/null 2>smoke/sb-fetch.err; then echo "OK: sing-box TLS"; else echo "FAIL: sing-box TLS"; cat smoke/sb-fetch.err; status=1; fi
 done
