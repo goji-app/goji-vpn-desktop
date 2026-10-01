@@ -7,19 +7,25 @@
 
 ## Установка
 
-1. Скачайте архив из [последнего релиза](https://github.com/goji-app/goji-vpn-macos/releases/latest):
-   - `…-macOS-arm64.zip` — Mac на Apple Silicon (M1–M4);
-   - `…-macOS-x64.zip` — Mac на Intel.
-2. Распакуйте и перенесите **Goji VPN** в «Программы».
-3. Приложение не заверено Apple, поэтому при первом запуске выполните в Терминале:
+1. Скачайте установщик из [последнего релиза](https://github.com/goji-app/goji-vpn-macos/releases/latest):
+   - `…-macOS-arm64.dmg` — Mac на Apple Silicon (M1–M4);
+   - `…-macOS-x64.dmg` — Mac на Intel.
+2. Откройте `.dmg` и перетащите **Goji VPN** в «Программы».
+3. Приложение не заверено Apple, поэтому при первом запуске macOS его остановит. Откройте
+   «Системные настройки → Конфиденциальность и безопасность» и нажмите «Всё равно открыть».
+   Другой способ — выполнить в Терминале:
    ```
    xattr -dr com.apple.quarantine "/Applications/Goji VPN.app"
    ```
-   или откройте его, затем «Системные настройки → Конфиденциальность и безопасность → Всё равно открыть».
 4. При подключении macOS попросит пароль администратора — он нужен, чтобы создать
    VPN-интерфейс для всего трафика Mac.
 
-## Сборка (на Windows или macOS)
+## Сборка
+
+Основной путь — GitHub Actions (`.github/workflows/macos.yml`, запуск вручную): сборка на Mac,
+подпись `codesign`, установщики `.dmg`, zip для автообновления и пробный запуск со снимками экрана.
+
+Локально (на Windows или macOS):
 
 Нужны .NET 8 SDK, Python 3 с Pillow и `tools/rcodesign` (ad-hoc подпись без Mac).
 Ядра под обе архитектуры кладутся в `Runtime/arm64` и `Runtime/x64` — см. `Runtime/README.md`.

@@ -387,7 +387,7 @@ public class HoloBadge : Panel
         {
             var rect = new Rect(Bounds.Size);
             if (rect.Width <= 0) return;
-            var colors = _owner.Reverse ? Holo.Reverse().ToArray() : Holo;
+            var colors = _owner.Reverse ? Enumerable.Reverse(Holo).ToArray() : Holo;
             var shift = Seconds / 4 % 1;
             var brush = new LinearGradientBrush
             {
