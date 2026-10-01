@@ -24,6 +24,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import time
 import zipfile
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -250,10 +251,19 @@ def make_dmg(app, dmg_path, ver):
             print("! Finder не оформил окно — образ будет без раскладки", flush=True)
         run(["sync"])
     finally:
-        run(["hdiutil", "detach", mount, "-force"], check=False)
-    if os.path.exists(dmg_path):
-        os.remove(dmg_path)
-    run(["hdiutil", "convert", rw, "-format", "UDZO", "-imagekey", "zlib-level=9", "-o", dmg_path])
+        # Finder отпускает том не сразу: без ожидания convert падает с "Resource temporarily unavailable".
+        for attempt in range(10):
+            if run(["hdiutil", "detach", mount] + (["-force"] if attempt >= 5 else []), check=False).returncode == 0:
+                break
+            time.sleep(3)
+    for attempt in range(5):
+        if os.path.exists(dmg_path):
+            os.remove(dmg_path)
+        if run(["hdiutil", "convert", rw, "-format", "UDZO", "-imagekey", "zlib-level=9", "-o", dmg_path],
+               check=False).returncode == 0:
+            return
+        time.sleep(5)
+    sys.exit("hdiutil convert не удался")
 
 
 def build(arch, ver):
