@@ -8,7 +8,9 @@
 # Официальные сборки Go 1.26 требуют macOS 12+. Как и sing-box для своих legacy-сборок, берём
 # Go 1.26.7 с тремя патчами SagerNet (возврат старых версий Mach-O и прежнего способа
 # проверки цепочек сертификатов в crypto/x509) и собираем с CGO, чтобы минимальную версию
-# проставил системный линкер по MACOSX_DEPLOYMENT_TARGET.
+# проставил системный линкер по MACOSX_DEPLOYMENT_TARGET. В xray нет cgo-кода, поэтому ему
+# внешний линкер включается явно (-linkmode=external) — иначе встроенный линкер Go пишет 12.0.
+# with_usbip из тегов sing-box убран: он зовёт API macOS 12, а USB/IP клиенту не нужен.
 # Все загрузки сверяются по SHA-256.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -17,7 +19,7 @@ GO_VERSION=1.26.7
 GO_SHA256=020a1e8224811be75163e920bc77e0926a1390a6aeea19bdcf23f74b9d749f6d
 XRAY_TAG=v26.3.27
 SINGBOX_TAG=v1.14.0
-SINGBOX_TAGS=with_gvisor,with_quic,with_dhcp,with_wireguard,with_utls,with_acme,with_clash_api,with_tailscale,with_ccm,with_ocm,with_cloudflared,with_usbip,with_openvpn,with_openconnect,badlinkname,tfogo_checklinkname0
+SINGBOX_TAGS=with_gvisor,with_quic,with_dhcp,with_wireguard,with_utls,with_acme,with_clash_api,with_tailscale,with_ccm,with_ocm,with_cloudflared,with_openvpn,with_openconnect,badlinkname,tfogo_checklinkname0
 SINGBOX_LDFLAGS="-X runtime.godebugDefault=multipathtcp=0,tlssha1=1 -checklinkname=0"
 PATCHES=(
   "f080b0c6346eb690c0dc82497b35925f385b35ac 0a389ce628917baa6436628303facd37fa0d7080229ef918cb9d3ccc037551dc"
@@ -50,7 +52,7 @@ for arch in amd64 arm64; do
   mkdir -p "$dir"
   (cd "$work/xray" && GOARCH=$arch MACOSX_DEPLOYMENT_TARGET=$target \
     go build -o "$work/xray-$arch" -trimpath -buildvcs=false \
-      -ldflags "-X github.com/xtls/xray-core/core.build=$commit -s -w -buildid=" ./main)
+      -ldflags "-linkmode=external -X github.com/xtls/xray-core/core.build=$commit -s -w -buildid=" ./main)
   cp "$work/xray-$arch" "$dir/xray"
 done
 
