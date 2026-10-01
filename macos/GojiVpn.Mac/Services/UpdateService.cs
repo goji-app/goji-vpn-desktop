@@ -26,7 +26,7 @@ public sealed record UpdateInfo(Version Version, string VersionLabel, string Cha
 /// </summary>
 public sealed class UpdateService
 {
-    private const string ReleasesApiUrl = "https://api.github.com/repos/goji-app/goji-vpn-macos/releases/latest";
+    private const string ReleasesApiUrl = "https://api.github.com/repos/goji-app/goji-vpn-desktop/releases/latest";
 
     private readonly HttpClient _http;
 

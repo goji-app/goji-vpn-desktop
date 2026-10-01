@@ -7,7 +7,7 @@
 
 ## Установка
 
-1. Скачайте установщик из [последнего релиза](https://github.com/goji-app/goji-vpn-macos/releases/latest):
+1. Скачайте установщик из [последнего релиза](https://github.com/goji-app/goji-vpn-desktop/releases/latest):
    - `…-macOS-arm64.dmg` — Mac на Apple Silicon (M1–M4);
    - `…-macOS-x64.dmg` — Mac на Intel.
 2. Откройте `.dmg` и перетащите **Goji VPN** в «Программы».
