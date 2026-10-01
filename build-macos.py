@@ -1,7 +1,11 @@
-"""Сборка macOS-клиента Goji VPN на Windows.
+"""Сборка macOS-клиента Goji VPN.
 
 Для каждой архитектуры (arm64 — Apple Silicon, x64 — Intel):
-  dotnet publish (self-contained) -> Goji VPN.app -> ad-hoc подпись rcodesign -> zip с unix-правами.
+  dotnet publish (self-contained) -> Goji VPN.app -> ad-hoc подпись -> zip (+ dmg на Mac).
+
+На Mac (основной путь, GitHub Actions — .github/workflows/macos.yml): подпись штатным codesign,
+установщик GojiVPN-<v>-macOS-<arch>.dmg с окном "перетащите в Программы" и zip через ditto.
+На Windows (запасной путь): подпись rcodesign (tools/rcodesign.exe) и только zip.
 
 Раскладка бандла по правилам Apple: в Contents/MacOS только нативный запускатель (apphost),
 всё остальное — .NET-сборки, dylib, Runtime/xray, sing-box, geo*.dat — в Contents/Resources/app.
@@ -9,7 +13,8 @@
 Иначе .dll в Contents/MacOS не запечатываются подписью, и Gatekeeper называет приложение
 "повреждённым" без кнопки "Всё равно открыть".
 
-Результат: dist/GojiVPN-<версия>-macOS-<arch>.zip (имя ждёт UpdateService) + копия в ../builds/macos.
+Результат: dist/GojiVPN-<версия>-macOS-<arch>.zip (имя ждёт UpdateService) и .dmg;
+на Windows ещё копия в ../builds/macos.
 Запуск: python build-macos.py [arm64|x64 ...]
 """
 import io
@@ -21,12 +26,13 @@ import subprocess
 import sys
 import zipfile
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PROJ = os.path.join(ROOT, "GojiVpn.Mac", "GojiVpn.Mac.csproj")
 RCODESIGN = os.path.join(ROOT, "tools", "rcodesign.exe")
-ICON_SRC = os.path.join(ROOT, "..", "google-play", "assets", "ic_launcher_512.png")
+ICON_SRC = os.path.join(ROOT, "packaging", "icon-512.png")
+FONTS = os.path.join(ROOT, "GojiVpn.Mac", "Assets", "Fonts")
 OUT = os.path.join(ROOT, "out")
 DIST = os.path.join(ROOT, "dist")
 ARCHIVE = os.path.join(ROOT, "..", "builds", "macos")
@@ -34,6 +40,11 @@ APP_NAME = "Goji VPN"
 EXE_NAME = "GojiVpn"
 BUNDLE_ID = "xyz.gojihub.vpn.mac"
 MACHO_MAGIC = {b"\xcf\xfa\xed\xfe", b"\xce\xfa\xed\xfe", b"\xca\xfe\xba\xbe", b"\xfe\xed\xfa\xcf"}
+ON_MAC = sys.platform == "darwin"
+
+# Окно установщика (в точках): значок приложения слева, "Программы" справа.
+DMG_W, DMG_H = 640, 420
+DMG_APP_POS, DMG_LINK_POS = (170, 205), (470, 205)
 
 
 def version():
@@ -41,13 +52,13 @@ def version():
         return re.search(r"<Version>([^<]+)</Version>", f.read()).group(1)
 
 
-def run(cmd):
+def run(cmd, check=True):
     print(">", " ".join(cmd), flush=True)
-    subprocess.run(cmd, check=True)
+    return subprocess.run(cmd, check=check)
 
 
-def make_icns(path):
-    """Иконка в стиле macOS: скруглённый квадрат 824/1024 с тенью, внутри — иконка из Google Play."""
+def app_icon_image():
+    """Иконка в стиле macOS: скруглённый квадрат 824/1024 с тенью, внутри — иконка приложения."""
     src = Image.open(ICON_SRC).convert("RGBA")
     canvas = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
     box, off, radius = 824, 100, 185
@@ -59,9 +70,13 @@ def make_icns(path):
     tile = src.resize((box, box), Image.LANCZOS)
     tile.putalpha(mask)
     canvas.alpha_composite(tile, (off, off))
+    return canvas
 
+
+def make_icns(path):
     # PNG-вложения icns: icp4 16, icp5 32, ic07 128, ic08 256, ic09 512, ic10 1024,
     # ic11 32 (16@2x), ic12 64 (32@2x), ic13 256 (128@2x), ic14 512 (256@2x).
+    canvas = app_icon_image()
     chunks = b""
     for tag, size in [("icp4", 16), ("icp5", 32), ("ic11", 32), ("ic12", 64), ("ic07", 128),
                       ("ic08", 256), ("ic13", 256), ("ic09", 512), ("ic14", 512), ("ic10", 1024)]:
@@ -71,6 +86,36 @@ def make_icns(path):
         chunks += tag.encode("ascii") + struct.pack(">I", len(data) + 8) + data
     with open(path, "wb") as f:
         f.write(b"icns" + struct.pack(">I", len(chunks) + 8) + chunks)
+
+
+def dmg_background(path, scale):
+    """Фон окна установщика: мягкий градиент в цветах "Стекла", стрелка и подсказки."""
+    w, h = DMG_W * scale, DMG_H * scale
+    top, bottom = (232, 246, 242), (243, 238, 250)
+    img = Image.new("RGB", (w, h))
+    px = ImageDraw.Draw(img)
+    for y in range(h):
+        t = y / (h - 1)
+        px.line([(0, y), (w, y)], fill=tuple(round(a + (b - a) * t) for a, b in zip(top, bottom)))
+    d = ImageDraw.Draw(img)
+    bold = ImageFont.truetype(os.path.join(FONTS, "manrope_bold.ttf"), 22 * scale)
+    reg = ImageFont.truetype(os.path.join(FONTS, "manrope_medium.ttf"), 12 * scale)
+    ink, muted, teal = (20, 32, 30), (92, 104, 102), (18, 150, 128)
+
+    def centered(text, y, font, fill):
+        tw = d.textlength(text, font=font)
+        d.text(((w - tw) / 2, y), text, font=font, fill=fill)
+
+    centered("Перетащите Goji VPN в «Программы»", 38 * scale, bold, ink)
+    # Стрелка между значками.
+    y = DMG_APP_POS[1] * scale
+    x0, x1 = (DMG_APP_POS[0] + 78) * scale, (DMG_LINK_POS[0] - 78) * scale
+    d.line([(x0, y), (x1 - 10 * scale, y)], fill=teal, width=5 * scale)
+    d.polygon([(x1, y), (x1 - 18 * scale, y - 11 * scale), (x1 - 18 * scale, y + 11 * scale)], fill=teal)
+    centered("Первый запуск: если macOS не открывает приложение, зайдите в", 296 * scale, reg, muted)
+    centered("Системные настройки → Конфиденциальность и безопасность → «Всё равно открыть».", 314 * scale, reg, muted)
+    centered("При подключении VPN macOS спросит пароль администратора.", 338 * scale, reg, muted)
+    img.save(path)
 
 
 def info_plist(ver):
@@ -110,6 +155,7 @@ def patch_apphost(src, dst):
     data[at + len(new)] = 0
     with open(dst, "wb") as f:
         f.write(data)
+    os.chmod(dst, 0o755)
     os.remove(src)
 
 
@@ -118,7 +164,20 @@ def is_macho(path):
         return f.read(4) in MACHO_MAGIC
 
 
-def zip_app(app_dir, zip_path):
+def sign_on_mac(app):
+    """Ad-hoc подпись штатным codesign: сначала каждый Mach-O внутри Resources/app
+    (--deep туда не заходит, а Apple Silicon не грузит неподписанный код), затем бандл."""
+    for dirpath, _, filenames in os.walk(os.path.join(app, "Contents", "Resources")):
+        for name in filenames:
+            full = os.path.join(dirpath, name)
+            if is_macho(full):
+                os.chmod(full, 0o755)
+                run(["codesign", "--force", "--sign", "-", "--timestamp=none", full])
+    run(["codesign", "--force", "--sign", "-", "--timestamp=none", app])
+    run(["codesign", "--verify", "--deep", "--strict", "--verbose=2", app])
+
+
+def zip_app_windows(app_dir, zip_path):
     """zip с unix-правами: Windows их не хранит, а без 0755 macOS не запустит бинарники."""
     base = os.path.dirname(app_dir)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
@@ -137,6 +196,64 @@ def zip_app(app_dir, zip_path):
                 zi.compress_type = zipfile.ZIP_DEFLATED
                 with open(full, "rb") as f:
                     z.writestr(zi, f.read(), compresslevel=9)
+
+
+FINDER_LAYOUT = """
+tell application "Finder"
+  tell disk "{vol}"
+    open
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set the bounds of container window to {{200, 120, {r}, {b}}}
+    set opts to the icon view options of container window
+    set arrangement of opts to not arranged
+    set icon size of opts to 112
+    set text size of opts to 13
+    set background picture of opts to file ".background:background.tiff"
+    set position of item "{app}.app" of container window to {{{ax}, {ay}}}
+    set position of item "Applications" of container window to {{{lx}, {ly}}}
+    close
+    open
+    update without registering applications
+    delay 2
+    close
+  end tell
+end tell
+"""
+
+
+def make_dmg(app, dmg_path, ver):
+    """Установщик: окно с фоном, значком приложения и ярлыком "Программы"."""
+    work = os.path.join(os.path.dirname(app), "dmg")
+    shutil.rmtree(work, ignore_errors=True)
+    stage = os.path.join(work, "stage")
+    os.makedirs(os.path.join(stage, ".background"))
+    run(["ditto", app, os.path.join(stage, os.path.basename(app))])
+    os.symlink("/Applications", os.path.join(stage, "Applications"))
+    bg1, bg2 = os.path.join(work, "bg.png"), os.path.join(work, "bg@2x.png")
+    dmg_background(bg1, 1)
+    dmg_background(bg2, 2)
+    run(["tiffutil", "-cathidpicheck", bg1, bg2, "-out", os.path.join(stage, ".background", "background.tiff")])
+    shutil.copy2(os.path.join(app, "Contents", "Resources", "goji.icns"), os.path.join(stage, ".VolumeIcon.icns"))
+
+    vol = f"{APP_NAME} {ver}"
+    rw = os.path.join(work, "rw.dmg")
+    run(["hdiutil", "create", "-srcfolder", stage, "-volname", vol, "-fs", "HFS+", "-format", "UDRW", "-ov", rw])
+    mount = f"/Volumes/{vol}"
+    run(["hdiutil", "attach", "-readwrite", "-noverify", "-noautoopen", "-mountpoint", mount, rw])
+    try:
+        run(["SetFile", "-a", "C", mount], check=False)  # свой значок тома
+        script = FINDER_LAYOUT.format(vol=vol, app=APP_NAME, r=200 + DMG_W, b=120 + DMG_H,
+                                      ax=DMG_APP_POS[0], ay=DMG_APP_POS[1], lx=DMG_LINK_POS[0], ly=DMG_LINK_POS[1])
+        if run(["osascript", "-e", script], check=False).returncode != 0:
+            print("! Finder не оформил окно — образ будет без раскладки", flush=True)
+        run(["sync"])
+    finally:
+        run(["hdiutil", "detach", mount, "-force"], check=False)
+    if os.path.exists(dmg_path):
+        os.remove(dmg_path)
+    run(["hdiutil", "convert", rw, "-format", "UDZO", "-imagekey", "zlib-level=9", "-o", dmg_path])
 
 
 def build(arch, ver):
@@ -165,17 +282,23 @@ def build(arch, ver):
     with open(os.path.join(app, "Contents", "Info.plist"), "w", encoding="utf-8", newline="\n") as f:
         f.write(info_plist(ver))
 
-    # Ad-hoc подпись: без неё Apple Silicon не запускает Mach-O вовсе (Developer ID нет).
-    run([RCODESIGN, "sign", app])
-
     os.makedirs(DIST, exist_ok=True)
     zip_path = os.path.join(DIST, f"GojiVPN-{ver}-macOS-{arch}.zip")
     if os.path.exists(zip_path):
         os.remove(zip_path)
-    zip_app(app, zip_path)
-    os.makedirs(ARCHIVE, exist_ok=True)
-    shutil.copy2(zip_path, ARCHIVE)
-    print(f"OK {zip_path} ({os.path.getsize(zip_path):,} байт)", flush=True)
+    # Ad-hoc подпись: без неё Apple Silicon не запускает Mach-O вовсе (Developer ID нет).
+    if ON_MAC:
+        sign_on_mac(app)
+        run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", app, zip_path])
+        make_dmg(app, os.path.join(DIST, f"GojiVPN-{ver}-macOS-{arch}.dmg"), ver)
+    else:
+        run([RCODESIGN, "sign", app])
+        zip_app_windows(app, zip_path)
+        os.makedirs(ARCHIVE, exist_ok=True)
+        shutil.copy2(zip_path, ARCHIVE)
+    for f in sorted(os.listdir(DIST)):
+        if f"-macOS-{arch}." in f:
+            print(f"OK {f} ({os.path.getsize(os.path.join(DIST, f)):,} байт)", flush=True)
 
 
 if __name__ == "__main__":

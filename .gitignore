@@ -11,3 +11,4 @@ _downloads/
 Runtime/arm64/*
 Runtime/x64/*
 tools/*.exe
+smoke/
