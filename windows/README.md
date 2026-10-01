@@ -3,7 +3,7 @@
 Десктоп-клиент VPN-сервиса на WPF (.NET 8), с реальным туннелем на связке
 [Xray-core](https://github.com/XTLS/Xray-core) (протокол VLESS + XHTTP + Reality) и
 [sing-box](https://github.com/SagerNet/sing-box) (системный TUN-адаптер через Wintun).
-Работает с тем же бэкендом, что и наша [Android-версия](../../goji-vpn-android).
+Работает с тем же бэкендом, что и наша [Android-версия](https://github.com/goji-app/goji-vpn-android).
 
 ## Возможности
 
