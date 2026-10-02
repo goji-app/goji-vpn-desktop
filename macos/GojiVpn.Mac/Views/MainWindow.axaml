@@ -2,12 +2,17 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:GodjiVpn.Controls"
         x:Class="GodjiVpn.Views.MainWindow"
-        Title="Goji VPN" Width="440" Height="880" MinWidth="380" MinHeight="640"
+        Title="Goji VPN" Width="440" Height="820" MinWidth="280" MinHeight="480"
         WindowStartupLocation="CenterScreen" Background="{DynamicResource BgSolidBrush}">
     <!-- Общий живой фон под всеми экранами; какой экран показан (вход или оболочка с
-         вкладками), решают DataTemplates в App.axaml по типу CurrentViewModel. -->
+         вкладками), решают DataTemplates в App.axaml по типу CurrentViewModel.
+         Экраны свёрстаны на холсте 440×820 и целиком масштабируются под окно (Viewbox):
+         растягиваешь окно — интерфейс пропорционально крупнее, прокрутки нет. При другом
+         соотношении сторон по краям виден тот же фон. -->
     <Panel>
         <c:GlassBackdrop/>
-        <ContentControl Content="{Binding CurrentViewModel}" MaxWidth="520"/>
+        <Viewbox Stretch="Uniform" StretchDirection="Both">
+            <ContentControl Content="{Binding CurrentViewModel}" Width="440" Height="820"/>
+        </Viewbox>
     </Panel>
 </Window>
