@@ -20,6 +20,12 @@ public sealed partial class FaqItemUi : ObservableObject
     private void Toggle() => IsExpanded = !IsExpanded;
 }
 
+/// <summary>Заголовок раздела в плоском списке вопросов (Rows).</summary>
+public sealed class FaqHeaderRow
+{
+    public required string Name { get; init; }
+}
+
 public sealed class FaqSectionUi
 {
     public string? Name { get; init; }
@@ -41,6 +47,17 @@ public sealed partial class FaqViewModel : ObservableObject
     private bool loadError;
 
     public ObservableCollection<FaqSectionUi> Sections { get; } = new();
+
+    /// <summary>Без прокрутки: разделы и вопросы одним постраничным списком (заголовок раздела —
+    /// FaqHeaderRow, вопрос — FaqItemUi); ответ открывается отдельным подэкраном.</summary>
+    public ObservableCollection<object> Rows { get; } = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAnswerOpen), nameof(IsListOpen))]
+    private FaqItemUi? openedItem;
+
+    public bool IsAnswerOpen => OpenedItem != null;
+    public bool IsListOpen => OpenedItem == null;
     public bool IsEmpty => !Loading && !LoadError && Sections.Count == 0;
 
     public event Action? BackRequested;
@@ -52,6 +69,8 @@ public sealed partial class FaqViewModel : ObservableObject
         Loading = true;
         LoadError = false;
         Sections.Clear();
+        Rows.Clear();
+        OpenedItem = null;
         // Только для превью-экземпляра (GODJI_UI_PREVIEW_DEMO=1): вёрстка без API.
         if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_DEMO") == "1")
         {
@@ -64,6 +83,16 @@ public sealed partial class FaqViewModel : ObservableObject
                     new FaqItemUi { Question = "Какой узел выбрать?", Answer = "Автовыбор подключает к самому быстрому узлу по результатам пинга." }
                 }
             });
+            Sections.Add(new FaqSectionUi
+            {
+                Name = "Оплата и подписка",
+                Items = Enumerable.Range(1, 9).Select(i => new FaqItemUi
+                {
+                    Question = $"Вопрос об оплате №{i}: как продлить подписку и где посмотреть срок?",
+                    Answer = "Подписка продлевается вручную на экране «Подписка» — кнопка «Продлить». Срок виден там же."
+                }).ToList()
+            });
+            RebuildRows();
             Loading = false;
             OnPropertyChanged(nameof(IsEmpty));
             return;
@@ -77,6 +106,7 @@ public sealed partial class FaqViewModel : ObservableObject
 
             foreach (var section in (response.Sections ?? new()).Where(s => s.Items is { Count: > 0 }))
                 Sections.Add(new FaqSectionUi { Name = section.Name, Items = section.Items!.Select(ToItem).ToList() });
+            RebuildRows();
         }
         catch { LoadError = true; }
         finally
@@ -89,8 +119,26 @@ public sealed partial class FaqViewModel : ObservableObject
     [RelayCommand]
     private Task RetryAsync() => LoadAsync();
 
+    /// <summary>Назад: с ответа — к списку вопросов, со списка — из раздела.</summary>
     [RelayCommand]
-    private void Back() => BackRequested?.Invoke();
+    private void Back()
+    {
+        if (OpenedItem != null) OpenedItem = null;
+        else BackRequested?.Invoke();
+    }
+
+    [RelayCommand]
+    private void OpenAnswer(FaqItemUi item) => OpenedItem = item;
+
+    private void RebuildRows()
+    {
+        Rows.Clear();
+        foreach (var section in Sections)
+        {
+            if (section.HasName) Rows.Add(new FaqHeaderRow { Name = section.Name! });
+            foreach (var item in section.Items) Rows.Add(item);
+        }
+    }
 
     private static FaqItemUi ToItem(FaqItemDto i) => new() { Question = i.Question, Answer = i.Answer };
 }
