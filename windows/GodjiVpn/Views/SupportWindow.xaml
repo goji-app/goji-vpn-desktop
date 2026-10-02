@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:GodjiVpn.Controls"
         Title="Поддержка" Height="720" Width="460"
-        MinHeight="480" MinWidth="360"
+        MinHeight="400" MinWidth="260"
         Background="{DynamicResource BgSolidBrush}"
         WindowStartupLocation="CenterOwner"
         UseLayoutRounding="True"
@@ -13,8 +13,11 @@
          CurrentViewModel (SupportShellViewModel переключает список/создание/чат/FAQ). Каждый
          экран сам рисует свою шапку с "← Назад" — здесь общего заголовка нет, как и в Android,
          где у каждого экрана своя TopAppBar. -->
+    <!-- Как главное окно: экраны на холсте 440×680 масштабируются под размер окна (FitScaler). -->
     <Grid>
         <controls:GlassBackdrop/>
-        <ContentControl Content="{Binding CurrentViewModel}"/>
+        <controls:FitScaler>
+            <ContentControl Content="{Binding CurrentViewModel}" Width="440" Height="680"/>
+        </controls:FitScaler>
     </Grid>
 </Window>

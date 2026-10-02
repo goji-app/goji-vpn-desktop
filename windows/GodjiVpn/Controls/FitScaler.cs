@@ -23,8 +23,17 @@ public sealed class FitScaler : Viewbox
         SizeChanged += (_, _) => UpdateTextMode();
     }
 
-    /// <summary>Текущий масштаб холста.</summary>
-    public double Scale => Math.Min(ActualWidth / DesignWidth, ActualHeight / DesignHeight);
+    /// <summary>Текущий масштаб холста (его размер — Width/Height содержимого; по умолчанию
+    /// холст главного окна).</summary>
+    public double Scale
+    {
+        get
+        {
+            var w = Child is FrameworkElement { Width: > 0 } c ? c.Width : DesignWidth;
+            var h = Child is FrameworkElement { Height: > 0 } d ? d.Height : DesignHeight;
+            return Math.Min(ActualWidth / w, ActualHeight / h);
+        }
+    }
 
     private void UpdateTextMode()
     {

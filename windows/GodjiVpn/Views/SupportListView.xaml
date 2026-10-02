@@ -23,22 +23,29 @@
             </Button>
         </Grid>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="16,0,16,16">
+        <!-- Без прокрутки: обращения листаются страницами. -->
+        <Grid Grid.Row="1" Margin="16,0,16,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-                <Button Style="{StaticResource InkPillButton}" Height="48" FontSize="{s:Fs 14}" Content="Новое обращение"
+                <Button Grid.Row="0" Style="{StaticResource InkPillButton}" Height="48" FontSize="{s:Fs 14}" Content="Новое обращение"
                         Command="{Binding NewTicketCommand}"/>
-                <Button Style="{StaticResource GlassLinkButton}" Content="Часто задаваемые вопросы" Padding="8,12,8,12"
+                <Button Grid.Row="1" Style="{StaticResource GlassLinkButton}" Content="Часто задаваемые вопросы" Padding="8,12,8,12"
                         Command="{Binding OpenFaqCommand}"/>
 
-                <controls:SegmentedControl ItemsSource="{Binding TabLabels}" SelectedIndex="{Binding Tab, Mode=OneWay}"
+                <controls:SegmentedControl Grid.Row="2" ItemsSource="{Binding TabLabels}" SelectedIndex="{Binding Tab, Mode=OneWay}"
                                            SelectCommand="{Binding SelectTabCommand}"/>
 
-                <controls:Spinner Foreground="{DynamicResource TealBrush}" HorizontalAlignment="Center" Margin="0,30,0,0"
+                <controls:Spinner Grid.Row="3" VerticalAlignment="Top" Foreground="{DynamicResource TealBrush}" HorizontalAlignment="Center" Margin="0,30,0,0"
                                   Width="24" Height="24"
                                   Visibility="{Binding Loading, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,14,0,0"
+                <controls:GlassPanel Grid.Row="3" VerticalAlignment="Top" Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,14,0,0"
                                      Visibility="{Binding LoadError, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel Margin="20" HorizontalAlignment="Center">
                         <TextBlock Text="Не удалось загрузить обращения" FontWeight="Medium" FontSize="{s:Fs 12.5}"
@@ -48,7 +55,7 @@
                     </StackPanel>
                 </controls:GlassPanel>
 
-                <controls:GlassPanel CornerRadius="24" Margin="0,14,0,0">
+                <controls:GlassPanel Grid.Row="3" VerticalAlignment="Top" CornerRadius="24" Margin="0,14,0,0">
                     <controls:GlassPanel.Style>
                         <Style TargetType="controls:GlassPanel" BasedOn="{StaticResource GlassCard}">
                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -79,7 +86,7 @@
                     </TextBlock>
                 </controls:GlassPanel>
 
-                <controls:GlassPanel CornerRadius="24" Margin="0,14,0,0">
+                <controls:GlassPanel Grid.Row="3" VerticalAlignment="Top" CornerRadius="24" Margin="0,14,0,0">
                     <controls:GlassPanel.Style>
                         <Style TargetType="controls:GlassPanel" BasedOn="{StaticResource GlassCard}">
                             <Style.Triggers>
@@ -92,11 +99,11 @@
                             </Style.Triggers>
                         </Style>
                     </controls:GlassPanel.Style>
-                    <ItemsControl ItemsSource="{Binding Tickets}">
-                        <ItemsControl.ItemTemplate>
+                    <controls:PagedItems ItemsSource="{Binding Tickets}">
+                        <controls:PagedItems.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel>
-                                    <Rectangle x:Name="Sep" Style="{StaticResource Hair}"/>
+                                    <Rectangle Style="{StaticResource PagedSep}"/>
                                     <Button Style="{StaticResource RowButton}" Padding="16,12" Click="OnTicketClick" Tag="{Binding}"
                                             AutomationProperties.Name="{Binding Title}">
                                         <Grid>
@@ -137,16 +144,12 @@
                                         </Grid>
                                     </Button>
                                 </StackPanel>
-                                <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}">
-                                        <Setter TargetName="Sep" Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
-                                </DataTemplate.Triggers>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        </controls:PagedItems.ItemTemplate>
+                    </controls:PagedItems>
                 </controls:GlassPanel>
 
+                <StackPanel Grid.Row="4">
                 <controls:Spinner Foreground="{DynamicResource TealBrush}" HorizontalAlignment="Center" Margin="0,14,0,0"
                                   Visibility="{Binding LoadingMore, Converter={StaticResource BoolToVisibilityConverter}}"/>
                 <Button Content="Показать ещё" Padding="8,12">
@@ -166,7 +169,7 @@
                         </Style>
                     </Button.Style>
                 </Button>
-            </StackPanel>
-        </ScrollViewer>
+                </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>

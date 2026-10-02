@@ -23,17 +23,17 @@
                        Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
         </Grid>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="16,0,16,16">
+        <!-- Без прокрутки: форма на всё оставшееся место, поле сообщения растягивается. -->
+        <Grid Grid.Row="1" Margin="16,0,16,16">
 
                 <controls:Spinner Foreground="{DynamicResource TealBrush}" Width="24" Height="24" HorizontalAlignment="Center" Margin="0,30,0,0"
                                   Visibility="{Binding Loading, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                <StackPanel Visibility="{Binding Loading, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                <Grid Visibility="{Binding Loading, Converter={StaticResource InverseBoolToVisibilityConverter}}">
 
                     <!-- Лимит открытых обращений — форма скрыта, вместо неё переход в активное
                          обращение (NewTicketViewModel.LoadAsync проверяет это до показа формы). -->
-                    <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Tint="{DynamicResource TerracottaTintBrush}"
+                    <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Tint="{DynamicResource TerracottaTintBrush}" VerticalAlignment="Top"
                                          Visibility="{Binding CanCreate, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                         <StackPanel Margin="18">
                             <TextBlock Text="Уже есть активное обращение" FontWeight="Bold" FontSize="{s:Fs 15}" TextWrapping="Wrap"
@@ -48,9 +48,18 @@
 
                     <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24"
                                          Visibility="{Binding CanCreate, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <StackPanel Margin="16">
+                        <Grid Margin="16">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                            <StackPanel Visibility="{Binding ShowQueuePicker, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,0,0,14">
+                            <StackPanel Grid.Row="0" Visibility="{Binding ShowQueuePicker, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,0,0,14">
                                 <TextBlock Text="КУДА ОБРАТИТЬСЯ" FontWeight="SemiBold" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="4,0,0,8"/>
                                 <ItemsControl ItemsSource="{Binding Queues}">
                                     <ItemsControl.ItemsPanel>
@@ -79,13 +88,13 @@
                                 </ItemsControl>
                             </StackPanel>
 
-                            <TextBlock Text="ТЕМА (НЕОБЯЗАТЕЛЬНО)" FontWeight="SemiBold" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="4,0,0,8"/>
-                            <TextBox Style="{StaticResource GlassTextBox}" FontSize="{s:Fs 13}" Text="{Binding Subject, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Grid.Row="1" Text="ТЕМА (НЕОБЯЗАТЕЛЬНО)" FontWeight="SemiBold" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="4,0,0,8"/>
+                            <TextBox Grid.Row="2" Style="{StaticResource GlassTextBox}" FontSize="{s:Fs 13}" Text="{Binding Subject, UpdateSourceTrigger=PropertyChanged}"/>
 
-                            <TextBlock Text="СООБЩЕНИЕ" FontWeight="SemiBold" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="4,14,0,8"/>
-                            <Grid>
+                            <TextBlock Grid.Row="3" Text="СООБЩЕНИЕ" FontWeight="SemiBold" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="4,14,0,8"/>
+                            <Grid Grid.Row="4">
                                 <TextBox Style="{StaticResource GlassTextBox}" FontSize="{s:Fs 13}" TextWrapping="Wrap" AcceptsReturn="True"
-                                         MinHeight="120" MaxHeight="260" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto"
+                                         MinHeight="80" VerticalAlignment="Stretch" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto"
                                          Text="{Binding Message, UpdateSourceTrigger=PropertyChanged}"/>
                                 <TextBlock Text="Что случилось? Чем подробнее — тем быстрее поможем" FontWeight="Medium" FontSize="{s:Fs 13}"
                                            Foreground="{DynamicResource TextSecondaryBrush}" Margin="17,12,14,0" TextWrapping="Wrap"
@@ -103,20 +112,19 @@
                                 </TextBlock>
                             </Grid>
 
-                            <TextBlock Text="{Binding ErrorMessage}" FontSize="{s:Fs 11.5}" Foreground="{DynamicResource DangerBrush}"
+                            <TextBlock Grid.Row="5" Text="{Binding ErrorMessage}" FontSize="{s:Fs 11.5}" Foreground="{DynamicResource DangerBrush}"
                                        TextWrapping="Wrap" Margin="4,10,0,0"
                                        Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}"/>
 
-                            <Grid Margin="0,14,0,0">
+                            <Grid Grid.Row="6" Margin="0,14,0,0">
                                 <Button Style="{StaticResource AccentPillButton}" Height="48" Content="Отправить" Command="{Binding SubmitCommand}"
                                         Visibility="{Binding Submitting, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
                                 <controls:Spinner Foreground="{DynamicResource TealBrush}" Width="22" Height="22" HorizontalAlignment="Center"
                                                   Visibility="{Binding Submitting, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </Grid>
-                        </StackPanel>
+                        </Grid>
                     </controls:GlassPanel>
-                </StackPanel>
-            </StackPanel>
-        </ScrollViewer>
+                </Grid>
+        </Grid>
     </Grid>
 </UserControl>
