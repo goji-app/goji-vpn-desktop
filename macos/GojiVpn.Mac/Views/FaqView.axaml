@@ -52,7 +52,7 @@
                                                                 <TextBlock Grid.Column="1" Text="{Binding ToggleGlyph}" FontWeight="Bold" FontSize="{s:Fs 17}"
                                                                            Foreground="{DynamicResource TealDeepBrush}" Margin="10,0,0,0" VerticalAlignment="Center"/>
                                                             </Grid>
-                                                            <TextBlock Classes="muted" Text="{Binding Answer}" LineHeight="17" Margin="0,7,0,0"
+                                                            <TextBlock Classes="muted" Text="{Binding Answer}" LineHeight="{s:Fs 17}" Margin="0,7,0,0"
                                                                        IsVisible="{Binding IsExpanded}"/>
                                                         </StackPanel>
                                                     </Button>

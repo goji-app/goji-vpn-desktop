@@ -81,7 +81,7 @@
                                                                     </TextBlock.Style>
                                                                 </TextBlock>
                                                             </Grid>
-                                                            <TextBlock Text="{Binding Answer}" FontWeight="Medium" FontSize="{s:Fs 12}" LineHeight="17" TextWrapping="Wrap"
+                                                            <TextBlock Text="{Binding Answer}" FontWeight="Medium" FontSize="{s:Fs 12}" LineHeight="{s:Fs 17}" TextWrapping="Wrap"
                                                                        Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,7,0,0"
                                                                        Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                                         </StackPanel>

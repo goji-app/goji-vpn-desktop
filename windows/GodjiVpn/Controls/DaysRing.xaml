@@ -11,7 +11,7 @@
         <Ellipse Width="54" Height="54" Fill="{DynamicResource RingCoreBrush}"/>
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
             <TextBlock x:Name="DaysText" FontFamily="{StaticResource ManropeFamily}" FontWeight="ExtraBold" FontSize="{s:Fs 19}"
-                       Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" LineHeight="19"
+                       Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" LineHeight="{s:Fs 19}"
                        LineStackingStrategy="BlockLineHeight"/>
             <TextBlock Text="ДНЕЙ" FontFamily="{StaticResource ManropeFamily}" FontWeight="Bold" FontSize="{s:Fs 7.5}"
                        Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>

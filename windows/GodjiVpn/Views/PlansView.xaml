@@ -110,7 +110,7 @@
                                                 <controls:HoloBadge Text="Текущий" Icon="★" Margin="7,0,0,0"
                                                                     Visibility="{Binding IsCurrent, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                             </StackPanel>
-                                            <TextBlock Text="{Binding Description}" FontWeight="Medium" FontSize="{s:Fs 11.5}" LineHeight="16.7"
+                                            <TextBlock Text="{Binding Description}" FontWeight="Medium" FontSize="{s:Fs 11.5}" LineHeight="{s:Fs 16.7}"
                                                        Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,3,0,0"/>
                                             <Button Style="{StaticResource GlassLinkButton}" HorizontalAlignment="Left" FontSize="{s:Fs 10.5}" FontWeight="Bold"
                                                     Margin="0,3,0,0" Command="{Binding ToggleExpandedCommand}" Content="{Binding ToggleLabel}"
@@ -201,7 +201,7 @@
                         <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
                             <TextBlock Text="Перенести на другое устройство" FontWeight="Bold" FontSize="{s:Fs 13.5}"/>
                             <TextBlock Text="Вход без почты: покажи QR-код новому телефону" FontWeight="Medium" FontSize="{s:Fs 11}"
-                                       Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0" LineHeight="15.4"/>
+                                       Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0" LineHeight="{s:Fs 15.4}"/>
                         </StackPanel>
                         <Path Grid.Column="2" Data="{StaticResource IconChevronRight}" Style="{StaticResource Icon}" Width="16" Height="16"
                               Fill="{DynamicResource TextSecondaryBrush}"/>
@@ -387,7 +387,7 @@
                         <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
                             <TextBlock Text="Партнёрская программа" FontWeight="Bold" FontSize="{s:Fs 13.5}"/>
                             <TextBlock Text="Процент с каждой оплаты твоих клиентов. Заявка и вывод — на сайте." FontWeight="Medium" FontSize="{s:Fs 11}"
-                                       Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0" LineHeight="15.4"/>
+                                       Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0" LineHeight="{s:Fs 15.4}"/>
                         </StackPanel>
                         <Path Grid.Column="2" Data="{StaticResource IconNorthEast}" Style="{StaticResource Icon}" Width="14" Height="14"
                               Fill="{DynamicResource TextSecondaryBrush}"/>
@@ -407,7 +407,7 @@
                             <Path Data="{StaticResource IconChat}" Style="{StaticResource Icon}" Width="16" Height="16" Fill="White"/>
                         </Border>
                         <TextBlock Grid.Column="1" Text="Остались проблемы или что-то не работает? Напиши в поддержку."
-                                   FontWeight="SemiBold" FontSize="{s:Fs 12}" LineHeight="16.8" TextWrapping="Wrap" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                   FontWeight="SemiBold" FontSize="{s:Fs 12}" LineHeight="{s:Fs 16.8}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="12,0,0,0"/>
                     </Grid>
                 </controls:GlassPanel>
             </Button>

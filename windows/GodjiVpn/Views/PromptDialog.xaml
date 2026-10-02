@@ -40,7 +40,7 @@
         <controls:GlassPanel Style="{StaticResource GlassStrong}" CornerRadius="28" Margin="16">
             <StackPanel Margin="20">
                 <TextBlock x:Name="TitleBlock" FontWeight="Bold" FontSize="{s:Fs 18}" TextWrapping="Wrap" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                <TextBlock x:Name="MessageBlock" FontWeight="Medium" FontSize="{s:Fs 12.5}" LineHeight="18" TextWrapping="Wrap"
+                <TextBlock x:Name="MessageBlock" FontWeight="Medium" FontSize="{s:Fs 12.5}" LineHeight="{s:Fs 18}" TextWrapping="Wrap"
                            Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,8,0,0" Visibility="Collapsed"/>
                 <TextBlock x:Name="InputLabelBlock" FontWeight="SemiBold" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}"
                            Margin="6,14,0,6"/>

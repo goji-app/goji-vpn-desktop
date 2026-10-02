@@ -35,7 +35,7 @@
                 <StackPanel Margin="16,20,16,16">
 
                         <TextBlock Text="Привет. Куда&#10;подключаемся сегодня?" FontWeight="SemiBold" FontSize="{s:Fs 30}"
-                                   LineHeight="33" LineStackingStrategy="BlockLineHeight" TextWrapping="Wrap"
+                                   LineHeight="{s:Fs 33}" LineStackingStrategy="BlockLineHeight" TextWrapping="Wrap"
                                    Foreground="{DynamicResource TextPrimaryBrush}"/>
 
                         <!-- "Впервые здесь?" — рабочий пробный период выдаёт бот (с капчей), поэтому

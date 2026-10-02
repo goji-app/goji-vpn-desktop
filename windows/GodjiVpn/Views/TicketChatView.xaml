@@ -79,7 +79,7 @@
                                         <TextBlock Text="{Binding SenderName}" FontSize="{s:Fs 10.5}" FontWeight="Bold"
                                                    Foreground="{DynamicResource TealDeepBrush}" Margin="0,0,0,2"
                                                    Visibility="{Binding HasSenderName, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                        <TextBlock Text="{Binding Text}" FontWeight="Medium" FontSize="{s:Fs 13}" LineHeight="18" TextWrapping="Wrap"
+                                        <TextBlock Text="{Binding Text}" FontWeight="Medium" FontSize="{s:Fs 13}" LineHeight="{s:Fs 18}" TextWrapping="Wrap"
                                                    Style="{StaticResource BubbleText}"/>
                                         <ItemsControl ItemsSource="{Binding AttachmentNames}"
                                                       Visibility="{Binding HasAttachments, Converter={StaticResource BoolToVisibilityConverter}}">

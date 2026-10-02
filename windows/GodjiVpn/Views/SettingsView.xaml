@@ -178,7 +178,7 @@
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding LeakTitle}" FontWeight="Bold" FontSize="{s:Fs 14}" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                        <TextBlock Text="{Binding LeakDesc}" FontWeight="Medium" FontSize="{s:Fs 11.5}" LineHeight="16" TextWrapping="Wrap"
+                                        <TextBlock Text="{Binding LeakDesc}" FontWeight="Medium" FontSize="{s:Fs 11.5}" LineHeight="{s:Fs 16}" TextWrapping="Wrap"
                                                    Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </Grid>
@@ -454,7 +454,7 @@
                 <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,8,0,0">
                     <Grid>
                         <TextBlock Text="Пока нет. Подключись к своей сети (дом, работа) и нажми «Доверять»." FontWeight="Medium" FontSize="{s:Fs 12}"
-                                   LineHeight="17" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" Margin="14,13"
+                                   LineHeight="{s:Fs 17}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" Margin="14,13"
                                    Visibility="{Binding TrustedEmpty, Converter={StaticResource BoolToVisibilityConverter}}"/>
                         <ItemsControl ItemsSource="{Binding TrustedSsids}">
                             <ItemsControl.ItemTemplate>
@@ -491,7 +491,7 @@
                 </controls:GlassPanel>
 
                 <TextBlock Text="Правила срабатывают при смене сети, пока приложение запущено — в том числе свёрнутым в трей."
-                           FontWeight="Medium" FontSize="{s:Fs 11}" LineHeight="15" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"
+                           FontWeight="Medium" FontSize="{s:Fs 11}" LineHeight="{s:Fs 15}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"
                            Margin="8,12,8,0"/>
             </StackPanel>
         </ScrollViewer>
@@ -505,7 +505,7 @@
                     <TextBlock Text="Сайты мимо VPN" Style="{StaticResource SubTitle}"/>
                 </StackPanel>
                 <TextBlock Text="Трафик к этим сайтам (и их поддоменам) пойдёт напрямую через твоего провайдера, остальное — через VPN. Удобно для банков, госуслуг и локальных сервисов, которые не любят VPN."
-                           FontWeight="Medium" FontSize="{s:Fs 12}" LineHeight="17" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"
+                           FontWeight="Medium" FontSize="{s:Fs 12}" LineHeight="{s:Fs 17}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"
                            Margin="8,10,8,10"/>
 
                 <!-- Поле + "Добавить": капсула на Chip, обводка краснеет при ошибке. -->
@@ -555,7 +555,7 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Изменения применятся после переподключения VPN" FontWeight="SemiBold" FontSize="{s:Fs 12}" LineHeight="16"
+                        <TextBlock Text="Изменения применятся после переподключения VPN" FontWeight="SemiBold" FontSize="{s:Fs 12}" LineHeight="{s:Fs 16}"
                                    TextWrapping="Wrap" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                         <Button Grid.Column="1" Style="{StaticResource ChipButton}" Content="Применить" Margin="10,0,0,0"
                                 Command="{Binding ApplyBypassCommand}"/>
@@ -565,7 +565,7 @@
                 <TextBlock Text="{Binding BypassListLabel}" Style="{StaticResource SectionLabel}" Margin="8,16,8,0"/>
                 <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,8,0,0">
                     <Grid>
-                        <TextBlock Text="Список пуст — весь трафик идёт через VPN." FontWeight="Medium" FontSize="{s:Fs 12}" LineHeight="17" TextWrapping="Wrap"
+                        <TextBlock Text="Список пуст — весь трафик идёт через VPN." FontWeight="Medium" FontSize="{s:Fs 12}" LineHeight="{s:Fs 17}" TextWrapping="Wrap"
                                    Foreground="{DynamicResource TextSecondaryBrush}" Margin="14,13"
                                    Visibility="{Binding BypassEmpty, Converter={StaticResource BoolToVisibilityConverter}}"/>
                         <ItemsControl ItemsSource="{Binding BypassDomains}">

@@ -12,7 +12,7 @@
         <c:GlassPanel Classes="strong" CornerRadius="28" Margin="16">
             <StackPanel Margin="20">
                 <TextBlock Name="TitleBlock" FontWeight="Bold" FontSize="{s:Fs 18}" TextWrapping="Wrap"/>
-                <TextBlock Name="MessageBlock" Classes="muted" FontSize="{s:Fs 12.5}" LineHeight="18" Margin="0,8,0,0" IsVisible="False"/>
+                <TextBlock Name="MessageBlock" Classes="muted" FontSize="{s:Fs 12.5}" LineHeight="{s:Fs 18}" Margin="0,8,0,0" IsVisible="False"/>
                 <TextBlock Name="InputLabelBlock" FontWeight="SemiBold" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="6,14,0,6"/>
                 <TextBox Name="InputBox" Classes="glass" FontSize="{s:Fs 13.5}"/>
                 <Grid ColumnDefinitions="*,10,*" Margin="0,18,0,0">

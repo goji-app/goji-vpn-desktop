@@ -21,7 +21,7 @@
 
             <c:GlassPanel Grid.Row="2" Classes="strong" CornerRadius="32" Margin="0,12,0,0">
                     <StackPanel Margin="16,20,16,16">
-                        <TextBlock Text="Привет. Куда&#10;подключаемся сегодня?" FontWeight="SemiBold" FontSize="{s:Fs 30}" LineHeight="33" TextWrapping="Wrap"/>
+                        <TextBlock Text="Привет. Куда&#10;подключаемся сегодня?" FontWeight="SemiBold" FontSize="{s:Fs 30}" LineHeight="{s:Fs 33}" TextWrapping="Wrap"/>
 
                         <!-- "Впервые здесь?" — рабочий пробный период выдаёт бот. -->
                         <Button Classes="bare" HorizontalAlignment="Stretch" Margin="0,14,0,0" Command="{Binding OpenBotCommand}">
