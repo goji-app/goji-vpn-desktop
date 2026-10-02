@@ -12,7 +12,9 @@ mkdir -p smoke "$work/state"
 status=0
 sblog="$work/sing-box.log"; stop="$work/state/tun.stop"; pid="$work/state/tun.pid"
 PASS="GojiCi-$RANDOM$RANDOM"
-sudo sysadminctl -resetPasswordFor "$USER" -newPassword "$PASS" 2>&1 | tail -2
+ADMIN=gojici
+sudo sysadminctl -addUser "$ADMIN" -password "$PASS" -admin 2>&1 | tail -2
+id "$ADMIN"
 
 sed -n '/const string script = """/,/""";/p' GojiVpn.Mac/Services/VpnEngine.cs | sed '1d;$d' | sed 's/^            //' > "$work/wrapper.sh"
 cat > "$work/xray.json" <<'EOF'
@@ -33,7 +35,7 @@ cat > "$work/sing-box.json" <<'EOF'
 EOF
 
 # Строка для osascript — те же ShQuote/AppleScriptEscape, что в VpnEngine.cs.
-python3 - "$work" "$rt/sing-box" "$sblog" "$$" "$stop" "$pid" "$PASS" > "$work/apple.txt" <<'PY'
+ADMIN="$ADMIN" python3 - "$work" "$rt/sing-box" "$sblog" "$$" "$stop" "$pid" "$PASS" > "$work/apple.txt" <<'PY'
 import sys
 work, sb, log, app_pid, stop, pid, password = sys.argv[1:]
 q = lambda s: "'" + s.replace("'", "'\\''") + "'"
@@ -41,7 +43,7 @@ esc = lambda s: s.replace("\\", "\\\\").replace('"', '\\"')
 script = open(f"{work}/wrapper.sh").read().replace("\r", "")
 shell = ("nohup /bin/sh -c " + q(script) + " goji-tun " + q(sb) + " " + q(f"{work}/sing-box.json") + " " + q(log) +
          " " + app_pid + " " + q(stop) + " " + q(pid) + " 172.19.0.2 >/dev/null 2>&1 &")
-print(f'do shell script "{esc(shell)}" with administrator privileges user name "{__import__("os").environ["USER"]}" password "{password}"')
+print(f'do shell script "{esc(shell)}" with administrator privileges user name "{__import__("os").environ["ADMIN"]}" password "{password}"')
 PY
 
 dotnet build -v q -nologo packaging/tun-probe -o "$work/probe" > /dev/null || { echo "FAIL: сборка tun-probe"; exit 1; }
