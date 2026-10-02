@@ -193,6 +193,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         new LogFileItem { Label = "Приложение", FileName = "engine.log" },
         new LogFileItem { Label = "VPN-ядро (xray)", FileName = "xray.log" },
         new LogFileItem { Label = "VPN-туннель (sing-box)", FileName = "sing-box.log" },
+        new LogFileItem { Label = "Запуск туннеля", FileName = "tun-wrapper.log" },
         new LogFileItem { Label = "Сбои", FileName = "crash.log" },
     };
 

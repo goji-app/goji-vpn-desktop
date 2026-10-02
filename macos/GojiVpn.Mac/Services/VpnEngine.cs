@@ -153,6 +153,7 @@ public sealed class VpnEngine : INotifyPropertyChanged
         // Файл журнала создаём сами: root дописывает в существующий файл, владелец остаётся
         // пользователем — журнал можно открыть и удалить без прав администратора.
         File.AppendAllText(singBoxLog, $"===== launch {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} =====\n");
+        File.AppendAllText(Path.Combine(LogsDir, "tun-wrapper.log"), $"===== launch {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} =====\n");
         await StartPrivilegedTunnelAsync(Path.Combine(RuntimeDir, "sing-box"), singBoxConfigPath, singBoxLog).ConfigureAwait(false);
         LogEngine("root wrapper started");
 
@@ -167,7 +168,10 @@ public sealed class VpnEngine : INotifyPropertyChanged
         // Root-обёртка: $1 sing-box, $2 конфиг, $3 журнал, $4 pid приложения, $5 файл-сигнал
         // остановки, $6 pid-файл, $7 DNS туннеля. DNS всех сетевых служб подменяется на DNS
         // туннеля и восстанавливается при выходе (trap), в том числе при kill обёртки.
+        // Внутри функции $5/$6 — её собственные (пустые) аргументы, поэтому пути сохраняются заранее.
         const string script = """
+            STOPF="$5"; PIDF="$6"
+            echo "$(date '+%F %T') обёртка: старт, sing-box=$1"
             SVC=$(networksetup -listallnetworkservices | tail -n +2 | grep -v '^\*')
             SAVED=""
             restore() {
@@ -176,7 +180,8 @@ public sealed class VpnEngine : INotifyPropertyChanged
                 s=${line%%=*}; old=${line#*=}
                 if [ -z "$old" ]; then networksetup -setdnsservers "$s" Empty; else networksetup -setdnsservers "$s" $old; fi
               done
-              rm -f "$5" "$6"
+              rm -f "$STOPF" "$PIDF"
+              echo "$(date '+%F %T') обёртка: DNS восстановлен, выход"
             }
             IFS='
             '
@@ -188,7 +193,8 @@ public sealed class VpnEngine : INotifyPropertyChanged
             unset IFS
             "$1" run -c "$2" >> "$3" 2>&1 &
             SB=$!
-            echo $SB > "$6"
+            echo $SB > "$PIDF"
+            echo "$(date '+%F %T') обёртка: sing-box pid=$SB, службы: $(echo $SVC | tr '\n' ',')"
             trap 'kill $SB 2>/dev/null; restore; exit 0' TERM INT HUP
             sleep 2
             IFS='
@@ -196,15 +202,20 @@ public sealed class VpnEngine : INotifyPropertyChanged
             for s in $SVC; do networksetup -setdnsservers "$s" "$7"; done
             unset IFS
             while kill -0 $SB 2>/dev/null; do
-              if [ -f "$5" ] || ! kill -0 "$4" 2>/dev/null; then
+              if [ -f "$STOPF" ] || ! kill -0 "$4" 2>/dev/null; then
+                echo "$(date '+%F %T') обёртка: остановка (сигнал или приложение закрыто)"
                 kill $SB 2>/dev/null; sleep 2; kill -9 $SB 2>/dev/null
                 break
               fi
               sleep 1
             done
+            wait $SB 2>/dev/null; echo "$(date '+%F %T') обёртка: sing-box завершился, код $?"
             restore
             """;
-        var shell = new StringBuilder("nohup /bin/sh -c ")
+        // Обёртка работает на переднем плане, а osascript живёт, пока жив туннель: фоновый процесс
+        // (nohup … &), запущенный из "do shell script … with administrator privileges", macOS
+        // завершает вместе с самим do shell script — туннель тогда не поднимается вовсе.
+        var shell = new StringBuilder("/bin/sh -c ")
             .Append(ShQuote(script.Replace("\r", "")))
             .Append(" goji-tun ")
             .Append(ShQuote(singBoxPath)).Append(' ')
@@ -214,30 +225,55 @@ public sealed class VpnEngine : INotifyPropertyChanged
             .Append(ShQuote(StopFile)).Append(' ')
             .Append(ShQuote(PidFile)).Append(' ')
             .Append(TunDnsIp)
-            .Append(" >/dev/null 2>&1 &")
+            .Append(" >> ").Append(ShQuote(Path.Combine(LogsDir, "tun-wrapper.log"))).Append(" 2>&1")
             .ToString();
 
-        var appleScript = $"do shell script \"{AppleScriptEscape(shell)}\" with administrator privileges " +
-                          "with prompt \"Goji VPN запрашивает разрешение на создание VPN-туннеля.\"";
         var psi = new ProcessStartInfo("/usr/bin/osascript")
         {
             RedirectStandardError = true,
             RedirectStandardOutput = true,
             UseShellExecute = false
         };
+        // Без "with timeout" долгий do shell script может оборваться по тайм-ауту Apple Event.
         psi.ArgumentList.Add("-e");
-        psi.ArgumentList.Add(appleScript);
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException("Не удалось запустить osascript");
-        var stderr = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
-        await process.WaitForExitAsync().ConfigureAwait(false);
-        if (process.ExitCode != 0)
+        psi.ArgumentList.Add("with timeout of 31536000 seconds");
+        psi.ArgumentList.Add("-e");
+        psi.ArgumentList.Add($"do shell script \"{AppleScriptEscape(shell)}\" with administrator privileges " +
+                             "with prompt \"Goji VPN запрашивает разрешение на создание VPN-туннеля.\"");
+        psi.ArgumentList.Add("-e");
+        psi.ArgumentList.Add("end timeout");
+
+        _tunHelper?.Dispose();
+        var process = Process.Start(psi) ?? throw new InvalidOperationException("Не удалось запустить osascript");
+        _tunHelper = process;
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        _ = process.StandardOutput.ReadToEndAsync();
+
+        // Успех — обёртка записала pid sing-box; конец osascript до этого — отмена или ошибка.
+        // Запас времени — на ввод пароля.
+        var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(5);
+        while (!File.Exists(PidFile))
         {
-            // -128 — пользователь нажал "Отменить" в окне пароля.
-            if (stderr.Contains("-128"))
-                throw new OperationCanceledException("Подключение отменено — без пароля администратора туннель не создать.");
-            throw new InvalidOperationException($"Не удалось получить права администратора: {stderr.Trim()}");
+            if (process.HasExited)
+            {
+                var stderr = await stderrTask.ConfigureAwait(false);
+                // -128 — пользователь нажал "Отменить" в окне пароля.
+                if (stderr.Contains("-128"))
+                    throw new OperationCanceledException("Подключение отменено — без пароля администратора туннель не создать.");
+                if (process.ExitCode != 0)
+                    throw new InvalidOperationException($"Не удалось получить права администратора: {stderr.Trim()}");
+                var tail = TryReadLogTail(Path.Combine(LogsDir, "tun-wrapper.log"), 600);
+                throw new InvalidOperationException("Процесс туннеля завершился сразу после запуска." +
+                                                    (string.IsNullOrEmpty(tail) ? "" : $" Последнее в журнале: …{tail}"));
+            }
+            if (DateTime.UtcNow > deadline)
+                throw new TimeoutException("Не дождались запуска туннеля — окно пароля администратора не подтверждено.");
+            await Task.Delay(200).ConfigureAwait(false);
         }
     }
+
+    /// <summary>osascript, держащий root-обёртку туннеля; завершается вместе с ней.</summary>
+    private static Process? _tunHelper;
 
     private static string ShQuote(string s) => "'" + s.Replace("'", "'\\''") + "'";
     private static string AppleScriptEscape(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
@@ -259,9 +295,13 @@ public sealed class VpnEngine : INotifyPropertyChanged
             else if (sawPid) break; // обёртка уже завершилась — sing-box упал
             await Task.Delay(250).ConfigureAwait(false);
         }
+        // Пустой журнал sing-box — значит, он не запускался вовсе: тогда показываем журнал обёртки.
         var tail = TryReadLogTail(singBoxLog, 800);
+        if (string.IsNullOrEmpty(tail))
+            tail = TryReadLogTail(Path.Combine(LogsDir, "tun-wrapper.log"), 800);
         throw new InvalidOperationException(
-            "sing-box не смог поднять туннель." + (tail != null ? $" Последнее в журнале: …{tail}" : ""));
+            "sing-box не смог поднять туннель" + (sawPid ? "." : " (процесс туннеля не запустился).") +
+            (!string.IsNullOrEmpty(tail) ? $" Последнее в журнале: …{tail}" : ""));
     }
 
     /// <summary>Следит за ядрами после подключения: смерть xray или sing-box переводит

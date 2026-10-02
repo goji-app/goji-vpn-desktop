@@ -1,8 +1,9 @@
 #!/bin/bash
-# Запуск root-обёртки ровно так, как это делает приложение: osascript "do shell script …
-# with administrator privileges" + nohup … & (VpnEngine.StartPrivilegedTunnelAsync). В CI нет
-# окна пароля, поэтому одноразовой машине задаётся пароль и он передаётся в AppleScript.
-# Проверяет, что обёртка переживает завершение osascript и туннель поднимается.
+# Запуск root-обёртки ровно так, как это делает приложение (VpnEngine.StartPrivilegedTunnelAsync):
+# osascript "with timeout … do shell script … with administrator privileges … end timeout",
+# обёртка на переднем плане, osascript живёт, пока жив туннель. В CI нет окна пароля, поэтому
+# на одноразовой машине заводится админ с известным паролем. Туннель держится 150 с — дольше
+# стандартного тайм-аута Apple Event (120 с), затем останавливается файлом-сигналом.
 set -u
 cd "$(dirname "$0")/.."
 arch=${1:-arm64}
@@ -10,11 +11,10 @@ rt="$PWD/Runtime/$arch"
 work=$(mktemp -d)
 mkdir -p smoke "$work/state"
 status=0
-sblog="$work/sing-box.log"; stop="$work/state/tun.stop"; pid="$work/state/tun.pid"
+sblog="$work/sing-box.log"; wlog="$work/tun-wrapper.log"; stop="$work/state/tun.stop"; pid="$work/state/tun.pid"
 PASS="GojiCi-$RANDOM$RANDOM"
 ADMIN=gojici
-sudo sysadminctl -addUser "$ADMIN" -password "$PASS" -admin 2>&1 | tail -2
-id "$ADMIN"
+sudo sysadminctl -addUser "$ADMIN" -password "$PASS" -admin 2>&1 | tail -1
 
 sed -n '/const string script = """/,/""";/p' GojiVpn.Mac/Services/VpnEngine.cs | sed '1d;$d' | sed 's/^            //' > "$work/wrapper.sh"
 cat > "$work/xray.json" <<'EOF'
@@ -34,16 +34,16 @@ cat > "$work/sing-box.json" <<'EOF'
   "final":"socks-out"}}
 EOF
 
-# Строка для osascript — те же ShQuote/AppleScriptEscape, что в VpnEngine.cs.
-ADMIN="$ADMIN" python3 - "$work" "$rt/sing-box" "$sblog" "$$" "$stop" "$pid" "$PASS" > "$work/apple.txt" <<'PY'
-import sys
-work, sb, log, app_pid, stop, pid, password = sys.argv[1:]
+# Те же ShQuote/AppleScriptEscape и та же команда, что в VpnEngine.cs.
+ADMIN="$ADMIN" python3 - "$work" "$rt/sing-box" "$sblog" "$$" "$stop" "$pid" "$PASS" "$wlog" > "$work/apple.txt" <<'PY'
+import os, sys
+work, sb, log, app_pid, stop, pid, password, wlog = sys.argv[1:]
 q = lambda s: "'" + s.replace("'", "'\\''") + "'"
 esc = lambda s: s.replace("\\", "\\\\").replace('"', '\\"')
 script = open(f"{work}/wrapper.sh").read().replace("\r", "")
-shell = ("nohup /bin/sh -c " + q(script) + " goji-tun " + q(sb) + " " + q(f"{work}/sing-box.json") + " " + q(log) +
-         " " + app_pid + " " + q(stop) + " " + q(pid) + " 172.19.0.2 >/dev/null 2>&1 &")
-print(f'do shell script "{esc(shell)}" with administrator privileges user name "{__import__("os").environ["ADMIN"]}" password "{password}"')
+shell = ("/bin/sh -c " + q(script) + " goji-tun " + q(sb) + " " + q(f"{work}/sing-box.json") + " " + q(log) +
+         " " + app_pid + " " + q(stop) + " " + q(pid) + " 172.19.0.2 >> " + q(wlog) + " 2>&1")
+print(f'do shell script "{esc(shell)}" with administrator privileges user name "{os.environ["ADMIN"]}" password "{password}"')
 PY
 
 dotnet build -v q -nologo packaging/tun-probe -o "$work/probe" > /dev/null || { echo "FAIL: сборка tun-probe"; exit 1; }
@@ -51,20 +51,28 @@ dotnet build -v q -nologo packaging/tun-probe -o "$work/probe" > /dev/null || { 
 XRAY=$!
 sleep 2
 
-echo "== [$arch] osascript … with administrator privileges"
-osascript -e "$(cat "$work/apple.txt")"; echo "osascript exit=$?"
-sleep 1
-[ -f "$pid" ] && echo "pid-файл: $(cat "$pid")" || echo "pid-файла нет (пока)"
-if dotnet "$work/probe/tun-probe.dll" 40; then echo "OK: туннель поднят через osascript"; else status=1; fi
-ps -axo pid,user,command | grep -E "goji-tun|sing-box run" | grep -v grep || echo "FAIL: процессов обёртки/sing-box нет"
+echo "== [$arch] osascript … with administrator privileges (на переднем плане, как в приложении)"
+osascript -e "with timeout of 31536000 seconds" -e "$(cat "$work/apple.txt")" -e "end timeout" > "$work/osa.out" 2>&1 &
+OSA=$!
+for i in $(seq 1 60); do [ -f "$pid" ] && break; kill -0 $OSA 2>/dev/null || break; sleep 0.5; done
+[ -f "$pid" ] && echo "OK: pid-файл $(cat "$pid")" || { echo "FAIL: pid-файл не появился"; cat "$work/osa.out"; status=1; }
+if dotnet "$work/probe/tun-probe.dll" 40; then :; else status=1; fi
 code=$(curl -s -o /dev/null -w "%{http_code}" -m 15 https://www.apple.com/ || true)
 echo "curl: HTTP $code"
 
+echo "== держим туннель 150 с (дольше тайм-аута Apple Event)"
+sleep 150
+kill -0 $OSA 2>/dev/null && echo "OK: osascript жив" || { echo "FAIL: osascript завершился: $(cat "$work/osa.out")"; status=1; }
+ifconfig | grep -q "inet 172.19.0.1 " && echo "OK: туннель держится" || { echo "FAIL: туннель пропал"; status=1; }
+
+echo "== остановка файлом-сигналом"
 touch "$stop"
-for i in $(seq 1 30); do sudo pgrep -f "goji-tun" >/dev/null || break; sleep 0.5; done
-sudo pgrep -f "goji-tun" >/dev/null && { echo "FAIL: обёртка не завершилась"; status=1; } || echo "OK: обёртка завершилась"
-[ -f "$pid" ] && echo "NOTE: pid-файл остался" || echo "OK: pid-файл удалён"
+for i in $(seq 1 40); do kill -0 $OSA 2>/dev/null || break; sleep 0.5; done
+if kill -0 $OSA 2>/dev/null; then echo "FAIL: osascript не завершился"; status=1; else wait $OSA; echo "OK: osascript завершился (код $?)"; fi
+[ -f "$pid" ] && { echo "FAIL: pid-файл остался"; status=1; } || echo "OK: pid-файл удалён"
+[ -f "$stop" ] && { echo "FAIL: файл-сигнал остался"; status=1; } || echo "OK: файл-сигнал удалён"
+ifconfig | grep -q "inet 172.19.0.1 " && { echo "FAIL: utun остался"; status=1; } || echo "OK: туннель убран"
 kill $XRAY 2>/dev/null
-cp "$sblog" "smoke/osascript-$arch-sing-box.log" 2>/dev/null
-echo "--- журнал sing-box (начало)"; head -n 8 "$sblog" 2>/dev/null || echo "(журнала нет)"
+cp "$sblog" "smoke/osascript-$arch-sing-box.log" 2>/dev/null; cp "$wlog" "smoke/osascript-$arch-wrapper.log" 2>/dev/null
+echo "--- журнал обёртки"; cat "$wlog" 2>/dev/null || echo "(нет)"
 exit $status
