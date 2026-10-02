@@ -39,6 +39,19 @@ jobs:
         if: always()
         run: bash packaging/tunnel-test.sh x64
 
+      - uses: actions/setup-dotnet@v4
+        if: always()
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Обёртка приложения arm64
+        if: always()
+        run: bash packaging/wrapper-test.sh arm64
+
+      - name: Обёртка приложения x64
+        if: always()
+        run: bash packaging/wrapper-test.sh x64
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
