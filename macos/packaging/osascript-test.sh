@@ -12,7 +12,7 @@ mkdir -p smoke "$work/state"
 status=0
 sblog="$work/sing-box.log"; stop="$work/state/tun.stop"; pid="$work/state/tun.pid"
 PASS="GojiCi-$RANDOM$RANDOM"
-sudo dscl . -passwd "/Users/$USER" "$PASS"
+sudo sysadminctl -resetPasswordFor "$USER" -newPassword "$PASS" 2>&1 | tail -2
 
 sed -n '/const string script = """/,/""";/p' GojiVpn.Mac/Services/VpnEngine.cs | sed '1d;$d' | sed 's/^            //' > "$work/wrapper.sh"
 cat > "$work/xray.json" <<'EOF'
