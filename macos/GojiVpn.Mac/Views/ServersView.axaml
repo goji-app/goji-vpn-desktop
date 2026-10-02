@@ -7,9 +7,6 @@
     <!-- Серверы v5 «Стекло»: заголовок, "Обновить"/"Пинг", сортировка, баннер результата,
          все узлы — одна стеклянная карточка со строками через разделитель. -->
     <UserControl.Styles>
-        <Style Selector="ItemsControl.nodes ContentPresenter:nth-child(1) Rectangle.sep">
-            <Setter Property="IsVisible" Value="False"/>
-        </Style>
         <Style Selector="Grid.nodeRow"><Setter Property="Background" Value="Transparent"/></Style>
         <Style Selector="Grid.nodeRow.selected"><Setter Property="Background" Value="{DynamicResource SelBgBrush}"/></Style>
         <Style Selector="Border.flag"><Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/></Style>
@@ -33,9 +30,9 @@
         <Style Selector="Path.bannerIcon"><Setter Property="Data" Value="{StaticResource IconCheck}"/></Style>
         <Style Selector="Path.bannerIcon.error"><Setter Property="Data" Value="{StaticResource IconPriorityHigh}"/></Style>
     </UserControl.Styles>
-    <ScrollViewer>
-        <StackPanel Margin="16">
-            <Grid ColumnDefinitions="*,Auto" Margin="4,0">
+    <!-- Без прокрутки: список узлов занимает оставшееся место и листается страницами. -->
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="16">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="4,0">
                 <StackPanel VerticalAlignment="Bottom">
                     <TextBlock Classes="title" Text="Где выйти в сеть" TextWrapping="Wrap"/>
                     <TextBlock Classes="muted" Margin="0,3,0,0" Text="{Binding Nodes.Count, StringFormat='{}{0} узлов в подписке'}"/>
@@ -64,9 +61,9 @@
                 </StackPanel>
             </Grid>
 
-            <c:SegmentedControl ItemsSource="{Binding SortOptions}" SelectedIndex="{Binding SortIndex}" ItemHeight="32" LabelFontSize="12" Margin="0,12,0,0"/>
+            <c:SegmentedControl Grid.Row="1" ItemsSource="{Binding SortOptions}" SelectedIndex="{Binding SortIndex}" ItemHeight="32" LabelFontSize="12" Margin="0,12,0,0"/>
 
-            <c:GlassPanel Classes="pill banner" Classes.error="{Binding RefreshResultIsError}" CornerRadius="20" Padding="13,11" Margin="0,12,0,0"
+            <c:GlassPanel Grid.Row="2" Classes="pill banner" Classes.error="{Binding RefreshResultIsError}" CornerRadius="20" Padding="13,11" Margin="0,12,0,0"
                           IsVisible="{Binding RefreshResultMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                     <Panel Width="24" Height="24">
@@ -83,12 +80,12 @@
                 </Grid>
             </c:GlassPanel>
 
-            <c:GlassPanel Classes="card" Margin="0,12,0,0">
-                <ItemsControl Classes="nodes" ItemsSource="{Binding Nodes}">
-                    <ItemsControl.ItemTemplate>
+            <c:GlassPanel Grid.Row="3" Classes="card" Margin="0,12,0,0" VerticalAlignment="Top">
+                <c:PagedItems ItemsSource="{Binding Nodes}">
+                    <c:PagedItems.ItemTemplate>
                         <DataTemplate>
                             <StackPanel>
-                                <Rectangle Classes="hair sep"/>
+                                <Rectangle Classes="hair pagedSep"/>
                                 <Grid Classes="nodeRow" Classes.selected="{Binding IsSelected}" ColumnDefinitions="*,Auto,Auto,Auto">
                                     <Button Classes="bare" Padding="14,12,0,12"
                                             Command="{Binding $parent[ItemsControl].DataContext.SelectCommand}" CommandParameter="{Binding}">
@@ -127,9 +124,8 @@
                                 </Grid>
                             </StackPanel>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    </c:PagedItems.ItemTemplate>
+                </c:PagedItems>
             </c:GlassPanel>
-        </StackPanel>
-    </ScrollViewer>
+    </Grid>
 </UserControl>

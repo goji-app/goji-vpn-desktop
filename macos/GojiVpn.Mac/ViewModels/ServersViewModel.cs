@@ -115,7 +115,10 @@ public sealed partial class ServersViewModel : ObservableObject
         (string Name, int Ping, bool Fav)[] demo =
         {
             ("🇳🇱 Нидерланды", 48, true), ("🇩🇪 Германия", 63, false), ("🇫🇮 Финляндия", 142, false),
-            ("🇹🇷 Турция", 311, false), ("🇺🇸 США", -1, false), ("🇰🇿 Казахстан", -2, false)
+            ("🇹🇷 Турция", 311, false), ("🇺🇸 США", -1, false), ("🇰🇿 Казахстан", -2, false),
+            ("🇵🇱 Польша", 71, false), ("🇸🇪 Швеция", 88, true), ("🇫🇷 Франция", 95, false),
+            ("🇬🇧 Великобритания", 104, false), ("🇯🇵 Япония", 236, false), ("🇸🇬 Сингапур", 268, false),
+            ("🇦🇲 Армения", 57, false), ("🇷🇺 Россия LTE", 21, false)
         };
         for (var i = 0; i < demo.Length; i++)
             Nodes.Add(new NodeItem
