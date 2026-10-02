@@ -1,6 +1,7 @@
 <Application x:Class="GodjiVpn.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="clr-namespace:GodjiVpn.Utils"
              xmlns:local="clr-namespace:GodjiVpn"
              xmlns:vm="clr-namespace:GodjiVpn.ViewModels"
              xmlns:views="clr-namespace:GodjiVpn.Views"
@@ -65,13 +66,13 @@
             <Style x:Key="Headline" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
                 <Setter Property="FontFamily" Value="{StaticResource ManropeFamily}"/>
                 <Setter Property="FontWeight" Value="Bold"/>
-                <Setter Property="FontSize" Value="30"/>
+                <Setter Property="FontSize" Value="{s:Fs 30}"/>
             </Style>
 
             <Style x:Key="MutedText" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
                 <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
                 <Setter Property="FontFamily" Value="{StaticResource ManropeMediumFamily}"/>
-                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontSize" Value="{s:Fs 12}"/>
             </Style>
 
             <Style TargetType="TextBox">
@@ -83,7 +84,7 @@
                 <Setter Property="BorderThickness" Value="1.5"/>
                 <Setter Property="Padding" Value="12,10"/>
                 <Setter Property="VerticalContentAlignment" Value="Center"/>
-                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontSize" Value="{s:Fs 14}"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="TextBox">
@@ -103,7 +104,7 @@
                  кнопок ниже через BasedOn/переиспользование ControlTemplate-триггера. -->
             <Style x:Key="PressScaleButtonBase" TargetType="Button">
                 <Setter Property="FontFamily" Value="{StaticResource ManropeSemiBoldFamily}"/>
-                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontSize" Value="{s:Fs 14}"/>
                 <Setter Property="Padding" Value="16,10"/>
                 <Setter Property="BorderThickness" Value="0"/>
                 <Setter Property="Cursor" Value="Hand"/>
@@ -218,7 +219,7 @@
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Foreground" Value="{DynamicResource TealDeepBrush}"/>
                 <Setter Property="FontFamily" Value="{StaticResource ManropeSemiBoldFamily}"/>
-                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="FontSize" Value="{s:Fs 13}"/>
                 <Setter Property="BorderThickness" Value="0"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -252,7 +253,7 @@
             <Style x:Key="TabButton" TargetType="RadioButton">
                 <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
                 <Setter Property="FontFamily" Value="{StaticResource ManropeSemiBoldFamily}"/>
-                <Setter Property="FontSize" Value="10.5"/>
+                <Setter Property="FontSize" Value="{s:Fs 10.5}"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Template">
                     <Setter.Value>
@@ -264,7 +265,7 @@
                                  TargetName — он меняет Foreground самого RadioButton, а не подхватывается
                                  детьми из-за той же проблемы приоритета). -->
                             <StackPanel HorizontalAlignment="Center" Margin="0,8">
-                                <TextBlock x:Name="Icon" Text="{TemplateBinding Tag}" FontSize="20" HorizontalAlignment="Center"
+                                <TextBlock x:Name="Icon" Text="{TemplateBinding Tag}" FontSize="{s:Fs 20}" HorizontalAlignment="Center"
                                            Foreground="{TemplateBinding Foreground}" RenderTransformOrigin="0.5,0.5">
                                     <TextBlock.RenderTransform>
                                         <ScaleTransform ScaleX="1" ScaleY="1"/>

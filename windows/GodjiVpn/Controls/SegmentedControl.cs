@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Windows;
+using GodjiVpn.Utils;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
@@ -136,13 +137,13 @@ public class SegmentedControl : UserControl
             var item = items[i];
             var label = new TextBlock
             {
-                FontSize = LabelFontSize,
                 FontWeight = FontWeights.Bold,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(4, 0, 4, 0)
             };
+            FontScale.Bind(label, TextBlock.FontSizeProperty, LabelFontSize);
             label.SetResourceReference(TextBlock.FontFamilyProperty, "ManropeFamily");
             if (!string.IsNullOrEmpty(DisplayMemberPath))
                 label.SetBinding(TextBlock.TextProperty, new Binding(DisplayMemberPath) { Source = item });

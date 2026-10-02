@@ -1,6 +1,7 @@
 <UserControl x:Class="GodjiVpn.Views.FaqView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="clr-namespace:GodjiVpn.Utils"
              xmlns:controls="clr-namespace:GodjiVpn.Controls">
     <!-- Частые вопросы v5 «Стекло» — FaqScreen.kt: разделы — стеклянные карточки, вопросы —
          строки через разделитель, раскрываются по нажатию (+/−). -->
@@ -18,7 +19,7 @@
             <Button Style="{StaticResource GlassCircleButton}" Command="{Binding BackCommand}" AutomationProperties.Name="Назад">
                 <Path Data="{StaticResource IconChevronLeft}" Style="{StaticResource Icon}" Width="20" Height="20" Fill="{DynamicResource TextPrimaryBrush}"/>
             </Button>
-            <TextBlock Grid.Column="1" Text="Частые вопросы" FontWeight="SemiBold" FontSize="22" Margin="12,0,0,0"
+            <TextBlock Grid.Column="1" Text="Частые вопросы" FontWeight="SemiBold" FontSize="{s:Fs 22}" Margin="12,0,0,0"
                        Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
         </Grid>
 
@@ -31,7 +32,7 @@
                 <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24"
                                      Visibility="{Binding LoadError, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel Margin="20" HorizontalAlignment="Center">
-                        <TextBlock Text="Не удалось загрузить вопросы" FontWeight="Medium" FontSize="12.5" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        <TextBlock Text="Не удалось загрузить вопросы" FontWeight="Medium" FontSize="{s:Fs 12.5}" Foreground="{DynamicResource TextSecondaryBrush}"/>
                         <Button Style="{StaticResource ChipButton}" Content="Повторить" Margin="0,10,0,0" HorizontalAlignment="Center"
                                 Command="{Binding RetryCommand}"/>
                     </StackPanel>
@@ -39,7 +40,7 @@
 
                 <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24"
                                      Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="Пока нет вопросов" Margin="20" HorizontalAlignment="Center" FontWeight="Medium" FontSize="12.5"
+                    <TextBlock Text="Пока нет вопросов" Margin="20" HorizontalAlignment="Center" FontWeight="Medium" FontSize="{s:Fs 12.5}"
                                Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </controls:GlassPanel>
 
@@ -47,7 +48,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Margin="0,0,0,14">
-                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}"
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="{s:Fs 14}" Foreground="{DynamicResource TextPrimaryBrush}"
                                            Margin="6,0,6,8" TextWrapping="Wrap"
                                            Visibility="{Binding HasName, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24">
@@ -64,9 +65,9 @@
                                                                     <ColumnDefinition Width="*"/>
                                                                     <ColumnDefinition Width="Auto"/>
                                                                 </Grid.ColumnDefinitions>
-                                                                <TextBlock Text="{Binding Question}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap"
+                                                                <TextBlock Text="{Binding Question}" FontWeight="SemiBold" FontSize="{s:Fs 13}" TextWrapping="Wrap"
                                                                            Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                                                                <TextBlock Grid.Column="1" FontWeight="Bold" FontSize="17" Foreground="{DynamicResource TealDeepBrush}"
+                                                                <TextBlock Grid.Column="1" FontWeight="Bold" FontSize="{s:Fs 17}" Foreground="{DynamicResource TealDeepBrush}"
                                                                            Margin="10,0,0,0" VerticalAlignment="Center">
                                                                     <TextBlock.Style>
                                                                         <Style TargetType="TextBlock">
@@ -80,7 +81,7 @@
                                                                     </TextBlock.Style>
                                                                 </TextBlock>
                                                             </Grid>
-                                                            <TextBlock Text="{Binding Answer}" FontWeight="Medium" FontSize="12" LineHeight="17" TextWrapping="Wrap"
+                                                            <TextBlock Text="{Binding Answer}" FontWeight="Medium" FontSize="{s:Fs 12}" LineHeight="17" TextWrapping="Wrap"
                                                                        Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,7,0,0"
                                                                        Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                                         </StackPanel>

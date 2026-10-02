@@ -36,7 +36,7 @@ public static class RichContent
     public static FlowDocument Build(string raw, int collapsedBlocks = int.MaxValue, Action? onReadMore = null)
     {
         var (allBlocks, footnotes) = ParseDocument(raw.Replace("\r\n", "\n"));
-        var doc = new FlowDocument { PagePadding = new Thickness(0), FontSize = 12.5 };
+        var doc = new FlowDocument { PagePadding = new Thickness(0), FontSize = FontScale.Of(12.5) };
         doc.SetResourceReference(TextElement.ForegroundProperty, "TextPrimaryBrush");
         doc.SetResourceReference(TextElement.FontFamilyProperty, "ManropeMediumFamily");
 
@@ -52,7 +52,7 @@ public static class RichContent
             foreach (var (id, text) in footnotes)
             {
                 var p = NewParagraph();
-                p.FontSize = 10;
+                p.FontSize = FontScale.Of(10);
                 p.SetResourceReference(TextElement.ForegroundProperty, "TextMutedBrush");
                 p.Inlines.Add(new Run($"[{id}] {text}"));
                 doc.Blocks.Add(p);
@@ -64,7 +64,7 @@ public static class RichContent
     private static Block ReadMoreBlock(Action onReadMore)
     {
         var p = NewParagraph();
-        var link = new Hyperlink(new Run("Читать полностью")) { TextDecorations = null, FontWeight = FontWeights.Bold, FontSize = 11 };
+        var link = new Hyperlink(new Run("Читать полностью")) { TextDecorations = null, FontWeight = FontWeights.Bold, FontSize = FontScale.Of(11) };
         link.SetResourceReference(TextElement.ForegroundProperty, "TealDeepBrush");
         link.Click += (_, _) => onReadMore();
         p.Inlines.Add(link);
@@ -170,7 +170,7 @@ public static class RichContent
                 FlushParagraph();
                 var level = m.Groups[1].Value.Length;
                 var p = NewParagraph();
-                p.FontSize = level switch { 1 => 21, 2 => 18.5, 3 => 16.5, 4 => 14.5, _ => 13.5 };
+                p.FontSize = FontScale.Of(level switch { 1 => 21, 2 => 18.5, 3 => 16.5, 4 => 14.5, _ => 13.5 });
                 p.FontWeight = FontWeights.Bold;
                 AddInlines(m.Groups[2].Value, p.Inlines);
                 blocks.Add(p);
@@ -275,7 +275,7 @@ public static class RichContent
         TryLoadImage(url, img => { img.MaxHeight = 220; img.HorizontalAlignment = HorizontalAlignment.Left; panel.Children.Add(img); });
         if (!string.IsNullOrWhiteSpace(caption))
         {
-            var cap = new TextBlock { Text = caption, FontSize = 10, Margin = new Thickness(0, 3, 0, 0) };
+            var cap = new TextBlock { Text = caption, FontSize = FontScale.Of(10), Margin = new Thickness(0, 3, 0, 0) };
             cap.SetResourceReference(TextBlock.ForegroundProperty, "TextMutedBrush");
             panel.Children.Add(cap);
         }
@@ -317,7 +317,7 @@ public static class RichContent
 
     private static TableCell TableCellFor(string text, bool bold)
     {
-        var p = new Paragraph { FontWeight = bold ? FontWeights.Bold : FontWeights.Normal, FontSize = 11, Margin = new Thickness(0) };
+        var p = new Paragraph { FontWeight = bold ? FontWeights.Bold : FontWeights.Normal, FontSize = FontScale.Of(11), Margin = new Thickness(0) };
         p.SetResourceReference(TextElement.ForegroundProperty, "TextPrimaryBrush");
         AddInlines(text, p.Inlines);
         var cell = new TableCell(p) { Padding = new Thickness(6, 4, 6, 4), BorderThickness = new Thickness(0, 0, 0, 1) };
@@ -327,11 +327,11 @@ public static class RichContent
 
     private static Block DetailsBlock(string summaryRaw, string bodyRaw)
     {
-        var header = new TextBlock { TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.Bold, FontSize = 12.5 };
+        var header = new TextBlock { TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.Bold, FontSize = FontScale.Of(12.5) };
         header.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimaryBrush");
         AddInlines(summaryRaw, header.Inlines);
 
-        var innerDoc = new FlowDocument { PagePadding = new Thickness(0), FontSize = 12.5 };
+        var innerDoc = new FlowDocument { PagePadding = new Thickness(0), FontSize = FontScale.Of(12.5) };
         foreach (var block in ParsePlainBlocks(bodyRaw)) innerDoc.Blocks.Add(block);
         var innerBox = new RichTextBox
         {
@@ -398,7 +398,7 @@ public static class RichContent
         var text = new TextBlock
         {
             Text = $"📍 {lat.ToString(CultureInfo.InvariantCulture)}, {lon.ToString(CultureInfo.InvariantCulture)}",
-            FontWeight = FontWeights.Bold, FontSize = 11.5
+            FontWeight = FontWeights.Bold, FontSize = FontScale.Of(11.5)
         };
         text.SetResourceReference(TextBlock.ForegroundProperty, "TealDeepBrush");
         var border = new Border { CornerRadius = new CornerRadius(12), Padding = new Thickness(12), Cursor = Cursors.Hand, Margin = new Thickness(0, 2, 0, 6), Child = text };
@@ -514,7 +514,7 @@ public static class RichContent
                 {
                     FlushBuffer();
                     var id = text[(i + 2)..end];
-                    var run = new Run($"[{id}]") { FontSize = 9, BaselineAlignment = BaselineAlignment.Superscript };
+                    var run = new Run($"[{id}]") { FontSize = FontScale.Of(9), BaselineAlignment = BaselineAlignment.Superscript };
                     run.SetResourceReference(TextElement.ForegroundProperty, "TealDeepBrush");
                     target.Add(run);
                     i = end + 1;

@@ -1,4 +1,5 @@
 using System.Windows;
+using GodjiVpn.Utils;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -65,7 +66,7 @@ public class ActiveBadge : UserControl
         ping.BeginAnimation(OpacityProperty, fadeAnim);
 
         _label.Text = Text;
-        _label.FontSize = 10;
+        FontScale.Bind(_label, TextBlock.FontSizeProperty, 10);
         _label.FontWeight = FontWeights.ExtraBold;
         _label.VerticalAlignment = VerticalAlignment.Center;
         _label.SetResourceReference(TextBlock.ForegroundProperty, "TealDeepBrush");
@@ -152,12 +153,12 @@ public class HoloBadge : UserControl
         _body.Padding = new Thickness(8, 0, 8, 0);
         var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         _icon.Text = Icon;
-        _icon.FontSize = 9;
+        FontScale.Bind(_icon, TextBlock.FontSizeProperty, 9);
         _icon.Foreground = Brushes.White;
         _icon.Margin = new Thickness(0, 0, 4, 0);
         _icon.VerticalAlignment = VerticalAlignment.Center;
         _label.Text = Text;
-        _label.FontSize = 9.5;
+        FontScale.Bind(_label, TextBlock.FontSizeProperty, 9.5);
         _label.FontWeight = FontWeights.ExtraBold;
         _label.Foreground = Brushes.White;
         _label.VerticalAlignment = VerticalAlignment.Center;

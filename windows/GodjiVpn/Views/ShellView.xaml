@@ -1,6 +1,7 @@
 <UserControl x:Class="GodjiVpn.Views.ShellView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="clr-namespace:GodjiVpn.Utils"
              xmlns:controls="clr-namespace:GodjiVpn.Controls">
     <UserControl.Resources>
         <!-- Вкладка таб-бара v5: иконка из эталона (обводка) + подпись 10 Bold, выбранная —
@@ -22,7 +23,7 @@
                                     </Canvas>
                                 </Viewbox>
                                 <TextBlock Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"
-                                           FontFamily="{StaticResource ManropeFamily}" FontWeight="Bold" FontSize="10"
+                                           FontFamily="{StaticResource ManropeFamily}" FontWeight="Bold" FontSize="{s:Fs 10}"
                                            HorizontalAlignment="Center" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                         </Border>

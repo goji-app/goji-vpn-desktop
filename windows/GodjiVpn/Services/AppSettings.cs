@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using GodjiVpn.Utils;
 
 namespace GodjiVpn.Services;
 
@@ -22,6 +23,8 @@ public sealed class AppSettings
     public sealed class State
     {
         public ServerSort ServerSort { get; set; } = ServerSort.Favorites;
+        /// <summary>Размер шрифта (Настройки → Внешний вид), как FontSizePreset в Android.</summary>
+        public FontSizePreset FontSize { get; set; } = FontSizePreset.Normal;
         /// <summary>"Сайты мимо VPN" — домены в ASCII (punycode), без www., с поддоменами.</summary>
         public List<string> BypassDomains { get; set; } = new();
         /// <summary>Правила Wi-Fi (NetworkRulesManager).</summary>
@@ -40,6 +43,12 @@ public sealed class AppSettings
     {
         get => _state.ServerSort;
         set { if (_state.ServerSort == value) return; _state.ServerSort = value; Save(); }
+    }
+
+    public FontSizePreset FontSize
+    {
+        get => _state.FontSize;
+        set { if (_state.FontSize == value) return; _state.FontSize = value; Save(); }
     }
 
     public IReadOnlyList<string> BypassDomains => _state.BypassDomains;

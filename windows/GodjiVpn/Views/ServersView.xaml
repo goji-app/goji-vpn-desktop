@@ -1,6 +1,7 @@
 <UserControl x:Class="GodjiVpn.Views.ServersView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="clr-namespace:GodjiVpn.Utils"
              xmlns:controls="clr-namespace:GodjiVpn.Controls"
              xmlns:vm="clr-namespace:GodjiVpn.ViewModels">
     <!-- Серверы v5 «Стекло» — по эталону screens/*-servers.png и ServersScreen.kt: колонка
@@ -15,7 +16,7 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Bottom">
                     <TextBlock Text="Где выйти в сеть" Style="{StaticResource ScreenTitle}" TextWrapping="Wrap"/>
-                    <TextBlock FontWeight="Medium" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,0">
+                    <TextBlock FontWeight="Medium" FontSize="{s:Fs 12}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,0">
                         <Run Text="{Binding Nodes.Count, Mode=OneWay}"/><Run Text=" узлов в подписке"/>
                     </TextBlock>
                 </StackPanel>
@@ -29,7 +30,7 @@
                                                   Visibility="{Binding IsRefreshing, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </Grid>
                         </Button>
-                        <TextBlock Text="Обновить" FontWeight="Bold" FontSize="9.5" Foreground="{DynamicResource TerracottaBrush}"
+                        <TextBlock Text="Обновить" FontWeight="Bold" FontSize="{s:Fs 9.5}" Foreground="{DynamicResource TerracottaBrush}"
                                    HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                     <StackPanel>
@@ -41,7 +42,7 @@
                                                   Visibility="{Binding IsCheckingAll, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </Grid>
                         </Button>
-                        <TextBlock Text="Пинг" FontWeight="Bold" FontSize="9.5" Foreground="{DynamicResource TealDeepBrush}"
+                        <TextBlock Text="Пинг" FontWeight="Bold" FontSize="{s:Fs 9.5}" Foreground="{DynamicResource TealDeepBrush}"
                                    HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </StackPanel>
@@ -97,11 +98,11 @@
                             </Path.Style>
                         </Path>
                     </Grid>
-                    <TextBlock Grid.Column="1" Text="{Binding RefreshResultMessage}" FontWeight="SemiBold" FontSize="12"
+                    <TextBlock Grid.Column="1" Text="{Binding RefreshResultMessage}" FontWeight="SemiBold" FontSize="{s:Fs 12}"
                                TextWrapping="Wrap" VerticalAlignment="Center" Margin="10,0"/>
                     <Button Grid.Column="2" Style="{StaticResource BareButton}" Command="{Binding DismissRefreshResultCommand}" VerticalAlignment="Center">
                         <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource HairBrush}">
-                            <TextBlock Text="×" FontWeight="Bold" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
+                            <TextBlock Text="×" FontWeight="Bold" FontSize="{s:Fs 13}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
                         </Border>
                     </Button>
                 </Grid>
@@ -144,7 +145,7 @@
                                                           Visibility="{Binding FlagImagePath, Converter={StaticResource InverseNullToVisibilityConverter}}"/>
                                                 </Grid>
                                             </Border>
-                                            <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontWeight="Bold" FontSize="13.5"
+                                            <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontWeight="Bold" FontSize="{s:Fs 13.5}"
                                                        VerticalAlignment="Center" Margin="12,0,8,0" TextTrimming="CharacterEllipsis"/>
                                             <Path x:Name="Check" Grid.Column="2" Data="{StaticResource IconCheck}" Style="{StaticResource Icon}"
                                                   Width="18" Height="18" Fill="{DynamicResource TealDeepBrush}" Visibility="Collapsed"/>
@@ -164,7 +165,7 @@
                                             Command="{Binding DataContext.PingOneCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                             CommandParameter="{Binding}" VerticalAlignment="Center">
                                         <controls:GlassPanel Style="{StaticResource GlassFlat}" CornerRadius="999" MinWidth="70" Height="30" Padding="11,0">
-                                            <TextBlock x:Name="Ping" Text="{Binding PingLabel}" FontWeight="Bold" FontSize="11.5"
+                                            <TextBlock x:Name="Ping" Text="{Binding PingLabel}" FontWeight="Bold" FontSize="{s:Fs 11.5}"
                                                        HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                         </controls:GlassPanel>
                                     </Button>
