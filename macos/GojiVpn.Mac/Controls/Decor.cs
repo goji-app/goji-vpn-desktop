@@ -1,3 +1,4 @@
+using GodjiVpn.Utils;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
@@ -194,7 +195,7 @@ public class DaysRing : Panel
     public static readonly StyledProperty<int> DaysProperty = AvaloniaProperty.Register<DaysRing, int>(nameof(Days));
     public int Days { get => GetValue(DaysProperty); set => SetValue(DaysProperty, value); }
 
-    private readonly TextBlock _number = new() { FontWeight = FontWeight.ExtraBold, FontSize = 19, HorizontalAlignment = HorizontalAlignment.Center };
+    private readonly TextBlock _number = new() { FontWeight = FontWeight.ExtraBold, [!TextBlock.FontSizeProperty] = FontScale.For(19), HorizontalAlignment = HorizontalAlignment.Center };
 
     public DaysRing()
     {
@@ -204,7 +205,7 @@ public class DaysRing : Panel
         var core = new Border { Width = 54, Height = 54, CornerRadius = new CornerRadius(27) };
         core[!Border.BackgroundProperty] = new DynamicResourceExtension("RingCoreBrush");
         Children.Add(core);
-        var label = new TextBlock { Text = "ДНЕЙ", FontWeight = FontWeight.Bold, FontSize = 7.5, HorizontalAlignment = HorizontalAlignment.Center };
+        var label = new TextBlock { Text = "ДНЕЙ", FontWeight = FontWeight.Bold, [!TextBlock.FontSizeProperty] = FontScale.For(7.5), HorizontalAlignment = HorizontalAlignment.Center };
         label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("TextSecondaryBrush");
         _number[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("TextPrimaryBrush");
         Children.Add(new StackPanel
@@ -267,7 +268,7 @@ public class ActiveBadge : Panel
     public static readonly StyledProperty<string> TextProperty = AvaloniaProperty.Register<ActiveBadge, string>(nameof(Text), "АКТИВНА");
     public string Text { get => GetValue(TextProperty); set => SetValue(TextProperty, value); }
 
-    private readonly TextBlock _label = new() { FontWeight = FontWeight.ExtraBold, FontSize = 10, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _label = new() { FontWeight = FontWeight.ExtraBold, [!TextBlock.FontSizeProperty] = FontScale.For(10), VerticalAlignment = VerticalAlignment.Center };
 
     public ActiveBadge()
     {
@@ -356,7 +357,7 @@ public class HoloBadge : Panel
 
     private readonly TextBlock _label = new()
     {
-        FontWeight = FontWeight.ExtraBold, FontSize = 10, Foreground = Brushes.White,
+        FontWeight = FontWeight.ExtraBold, [!TextBlock.FontSizeProperty] = FontScale.For(10), Foreground = Brushes.White,
         VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0)
     };
 

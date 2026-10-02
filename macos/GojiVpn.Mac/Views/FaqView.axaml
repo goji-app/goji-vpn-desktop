@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="using:GodjiVpn.Utils"
              xmlns:c="using:GodjiVpn.Controls"
              x:Class="GodjiVpn.Views.FaqView">
     <!-- Частые вопросы: разделы — стеклянные карточки, вопросы раскрываются по нажатию. -->
@@ -22,20 +23,20 @@
 
                 <c:GlassPanel Classes="card" CornerRadius="24" IsVisible="{Binding LoadError}">
                     <StackPanel Margin="20" HorizontalAlignment="Center">
-                        <TextBlock Classes="muted" Text="Не удалось загрузить вопросы" FontSize="12.5"/>
+                        <TextBlock Classes="muted" Text="Не удалось загрузить вопросы" FontSize="{s:Fs 12.5}"/>
                         <Button Classes="chip" Content="Повторить" Margin="0,10,0,0" HorizontalAlignment="Center" Command="{Binding RetryCommand}"/>
                     </StackPanel>
                 </c:GlassPanel>
 
                 <c:GlassPanel Classes="card" CornerRadius="24" IsVisible="{Binding IsEmpty}">
-                    <TextBlock Classes="muted" Text="Пока нет вопросов" Margin="20" HorizontalAlignment="Center" FontSize="12.5"/>
+                    <TextBlock Classes="muted" Text="Пока нет вопросов" Margin="20" HorizontalAlignment="Center" FontSize="{s:Fs 12.5}"/>
                 </c:GlassPanel>
 
                 <ItemsControl ItemsSource="{Binding Sections}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Margin="0,0,0,14">
-                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Margin="6,0,6,8" TextWrapping="Wrap"
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="{s:Fs 14}" Margin="6,0,6,8" TextWrapping="Wrap"
                                            IsVisible="{Binding HasName}"/>
                                 <c:GlassPanel Classes="card" CornerRadius="24">
                                     <ItemsControl Classes="questions" ItemsSource="{Binding Items}">
@@ -46,9 +47,9 @@
                                                     <Button Classes="row" Padding="16,13" Command="{Binding ToggleCommand}">
                                                         <StackPanel>
                                                             <Grid ColumnDefinitions="*,Auto">
-                                                                <TextBlock Text="{Binding Question}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap"
+                                                                <TextBlock Text="{Binding Question}" FontWeight="SemiBold" FontSize="{s:Fs 13}" TextWrapping="Wrap"
                                                                            VerticalAlignment="Center"/>
-                                                                <TextBlock Grid.Column="1" Text="{Binding ToggleGlyph}" FontWeight="Bold" FontSize="17"
+                                                                <TextBlock Grid.Column="1" Text="{Binding ToggleGlyph}" FontWeight="Bold" FontSize="{s:Fs 17}"
                                                                            Foreground="{DynamicResource TealDeepBrush}" Margin="10,0,0,0" VerticalAlignment="Center"/>
                                                             </Grid>
                                                             <TextBlock Classes="muted" Text="{Binding Answer}" LineHeight="17" Margin="0,7,0,0"

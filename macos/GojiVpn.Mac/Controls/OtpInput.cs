@@ -1,3 +1,4 @@
+using GodjiVpn.Utils;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -41,7 +42,7 @@ public class OtpInput : UserControl
                 MaxLength = 1,
                 TextAlignment = TextAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
-                FontSize = 20,
+                [!TextBox.FontSizeProperty] = FontScale.For(20),
                 FontWeight = FontWeight.Bold,
                 Padding = new Thickness(0),
                 CornerRadius = new CornerRadius(16),

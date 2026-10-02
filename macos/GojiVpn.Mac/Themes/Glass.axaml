@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="using:GodjiVpn.Utils"
         xmlns:c="using:GodjiVpn.Controls">
     <!-- Компоненты дизайна v5 «Стекло» — те же, что в Windows-клиенте (Themes/Glass.xaml),
          в виде классов Avalonia: GlassPanel.card/.pill/.strong/.flat, Button.bare/.row/.accent/
@@ -53,43 +54,43 @@
     </Style>
     <Style Selector="TextBlock.title">
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="FontSize" Value="30"/>
+        <Setter Property="FontSize" Value="{s:Fs 30}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
     <Style Selector="TextBlock.subTitle">
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontSize" Value="22"/>
+        <Setter Property="FontSize" Value="{s:Fs 22}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
     <Style Selector="TextBlock.section">
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontSize" Value="{s:Fs 11}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="Margin" Value="8,16,8,8"/>
     </Style>
     <Style Selector="TextBlock.rowTitle">
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontSize" Value="{s:Fs 14}"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
     <Style Selector="TextBlock.rowSub">
         <Setter Property="FontWeight" Value="Medium"/>
-        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontSize" Value="{s:Fs 11}"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
         <Setter Property="Margin" Value="0,2,0,0"/>
         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
     <Style Selector="TextBlock.muted">
         <Setter Property="FontWeight" Value="Medium"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="{s:Fs 12}"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
     <Style Selector="TextBlock.error">
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="{s:Fs 12}"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
         <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
     </Style>
@@ -174,7 +175,7 @@
         <Setter Property="Height" Value="48"/>
         <Setter Property="Foreground" Value="White"/>
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontSize" Value="{s:Fs 14}"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Template">
@@ -194,7 +195,7 @@
         <Setter Property="Height" Value="52"/>
         <Setter Property="Foreground" Value="{DynamicResource InkBtnTextBrush}"/>
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontSize" Value="{s:Fs 15}"/>
         <Setter Property="Template">
             <ControlTemplate>
                 <Border CornerRadius="999" Background="{DynamicResource InkBtnBrush}" Padding="16,0">
@@ -211,7 +212,7 @@
         <Setter Property="Height" Value="44"/>
         <Setter Property="Foreground" Value="White"/>
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="FontSize" Value="{s:Fs 13.5}"/>
         <Setter Property="Template">
             <ControlTemplate>
                 <Border CornerRadius="999" Background="{DynamicResource DangerBrush}" Padding="16,0">
@@ -227,7 +228,7 @@
         <Setter Property="Height" Value="34"/>
         <Setter Property="Foreground" Value="{DynamicResource TealDeepBrush}"/>
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="{s:Fs 12}"/>
         <Setter Property="Padding" Value="14,0"/>
         <Setter Property="Template">
             <ControlTemplate>
@@ -258,7 +259,7 @@
     <Style Selector="Button.link">
         <Setter Property="Foreground" Value="{DynamicResource TealDeepBrush}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontSize" Value="{s:Fs 13}"/>
         <Setter Property="HorizontalAlignment" Value="Center"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="Padding" Value="8,10"/>
@@ -303,7 +304,7 @@
     <Style Selector="TextBox.glass">
         <Setter Property="FontFamily" Value="{StaticResource Manrope}"/>
         <Setter Property="FontWeight" Value="Medium"/>
-        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontSize" Value="{s:Fs 14}"/>
         <Setter Property="Padding" Value="14,11"/>
         <Setter Property="CornerRadius" Value="16"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>

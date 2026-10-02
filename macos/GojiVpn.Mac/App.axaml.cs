@@ -43,6 +43,11 @@ public partial class App : Application
         var customNodeStore = new CustomNodeStore();
         var favoriteServersStore = new FavoriteServersStore();
         var appSettings = new AppSettings();
+        GodjiVpn.Utils.FontScale.Instance.Apply(appSettings.FontSize);
+        // Превью-экземпляр: размер шрифта для сверки без изменения сохранённой настройки.
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW") == "1" &&
+            Enum.TryParse<GodjiVpn.Utils.FontSizePreset>(Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_FONT"), true, out var previewFont))
+            GodjiVpn.Utils.FontScale.Instance.Apply(previewFont);
         var subscriptionRepository = new SubscriptionRepository(apiClient, subscriptionService, customNodeStore);
         var subscriptionNotifier = new SubscriptionNotifier();
         var broadcastNotifier = new BroadcastNotifier();

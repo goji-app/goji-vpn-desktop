@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="using:GodjiVpn.Utils"
              xmlns:c="using:GodjiVpn.Controls"
              xmlns:conv="using:GodjiVpn.Converters"
              x:Class="GodjiVpn.Views.ConnectView">
@@ -22,13 +23,13 @@
                         <Border Width="28" Height="28" CornerRadius="14" Background="{DynamicResource InkBrush}">
                             <Image Source="avares://GojiVpn/Assets/Images/logo.png" Width="20" Height="20"/>
                         </Border>
-                        <TextBlock Text="Goji" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <TextBlock Text="Goji" FontWeight="Bold" FontSize="{s:Fs 14}" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     </StackPanel>
                 </c:GlassPanel>
                 <c:GlassPanel Classes="pill" HorizontalAlignment="Right" Height="34" Padding="13,0">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Ellipse Classes="net" Classes.offline="{Binding !HasNetwork}" Width="8" Height="8" VerticalAlignment="Center"/>
-                        <TextBlock Classes="net" Classes.offline="{Binding !HasNetwork}" Text="{Binding NetLabel}" FontWeight="Bold" FontSize="12"
+                        <TextBlock Classes="net" Classes.offline="{Binding !HasNetwork}" Text="{Binding NetLabel}" FontWeight="Bold" FontSize="{s:Fs 12}"
                                    Margin="7,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
                 </c:GlassPanel>
@@ -44,8 +45,8 @@
                 <c:GlassPanel Classes="pill" CornerRadius="18" HorizontalAlignment="Right" VerticalAlignment="Top"
                               Margin="0,6,14,0" MaxWidth="190" Padding="13,9" IsVisible="{Binding IsConnected}">
                     <StackPanel HorizontalAlignment="Right">
-                        <TextBlock Text="{Binding GreetingHi}" FontWeight="Bold" FontSize="20" HorizontalAlignment="Right"/>
-                        <TextBlock Text="{Binding GreetingSub}" FontWeight="SemiBold" FontSize="9" HorizontalAlignment="Right"
+                        <TextBlock Text="{Binding GreetingHi}" FontWeight="Bold" FontSize="{s:Fs 20}" HorizontalAlignment="Right"/>
+                        <TextBlock Text="{Binding GreetingSub}" FontWeight="SemiBold" FontSize="{s:Fs 9}" HorizontalAlignment="Right"
                                    Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                 </c:GlassPanel>
@@ -53,14 +54,14 @@
 
             <c:PowerButton Margin="0,12,0,0" IsOn="{Binding IsConnected}" IsBusy="{Binding IsConnecting}" Command="{Binding ToggleCommand}"/>
 
-            <TextBlock Text="{Binding Headline}" FontWeight="Bold" FontSize="26" TextAlignment="Center" HorizontalAlignment="Center"
+            <TextBlock Text="{Binding Headline}" FontWeight="Bold" FontSize="{s:Fs 26}" TextAlignment="Center" HorizontalAlignment="Center"
                        TextWrapping="Wrap" MaxHeight="64" TextTrimming="CharacterEllipsis" Margin="0,8,0,0"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,0">
                 <Ellipse Classes="state" Classes.connecting="{Binding IsConnecting}" Classes.connected="{Binding IsConnected}"
                          Width="7" Height="7" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding Subline}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
+                <TextBlock Text="{Binding Subline}" FontWeight="SemiBold" FontSize="{s:Fs 12}" Foreground="{DynamicResource TextSecondaryBrush}"
                            Margin="7,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="330"/>
-                <TextBlock FontWeight="Bold" FontSize="13" Margin="7,0,0,0" VerticalAlignment="Center" IsVisible="{Binding IsConnected}"
+                <TextBlock FontWeight="Bold" FontSize="{s:Fs 13}" Margin="7,0,0,0" VerticalAlignment="Center" IsVisible="{Binding IsConnected}"
                            Text="{Binding ConnectedTimeLabel, StringFormat='· {0}'}"/>
             </StackPanel>
 
@@ -72,22 +73,22 @@
                     <StackPanel HorizontalAlignment="Center">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <Path Classes="icon accent" Data="{StaticResource IconArrowDown}" Width="12" Height="12"/>
-                            <TextBlock Text="Скачивание" FontWeight="SemiBold" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="5,0,0,0"/>
+                            <TextBlock Text="Скачивание" FontWeight="SemiBold" FontSize="{s:Fs 10.5}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="5,0,0,0"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
-                            <TextBlock Text="{Binding DownSpeedLabel}" FontWeight="Bold" FontSize="22"/>
-                            <TextBlock Text=" МБ/с" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding DownSpeedLabel}" FontWeight="Bold" FontSize="{s:Fs 22}"/>
+                            <TextBlock Text=" МБ/с" FontWeight="SemiBold" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
                         </StackPanel>
                     </StackPanel>
                     <Rectangle Grid.Column="1" Classes="vhair"/>
                     <StackPanel Grid.Column="2" HorizontalAlignment="Center">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <Path Classes="icon terra" Data="{StaticResource IconArrowUp}" Width="12" Height="12"/>
-                            <TextBlock Text="Отдача" FontWeight="SemiBold" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="5,0,0,0"/>
+                            <TextBlock Text="Отдача" FontWeight="SemiBold" FontSize="{s:Fs 10.5}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="5,0,0,0"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
-                            <TextBlock Text="{Binding UpSpeedLabel}" FontWeight="Bold" FontSize="22"/>
-                            <TextBlock Text=" МБ/с" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding UpSpeedLabel}" FontWeight="Bold" FontSize="{s:Fs 22}"/>
+                            <TextBlock Text=" МБ/с" FontWeight="SemiBold" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
                         </StackPanel>
                     </StackPanel>
                 </Grid>
@@ -108,8 +109,8 @@
                             </Panel>
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding CurrentNodeName}" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Text="{Binding CurrentNodeMeta}" FontWeight="Medium" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}"
+                            <TextBlock Text="{Binding CurrentNodeName}" FontWeight="Bold" FontSize="{s:Fs 14}" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding CurrentNodeMeta}" FontWeight="Medium" FontSize="{s:Fs 11.5}" Foreground="{DynamicResource TextSecondaryBrush}"
                                        Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
                                        IsVisible="{Binding CurrentNodeMeta, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                         </StackPanel>
@@ -122,11 +123,11 @@
                 <Button Classes="row" Padding="14" Command="{Binding OpenTrafficCommand}">
                     <StackPanel>
                         <Grid>
-                            <TextBlock Text="Трафик" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                            <TextBlock Text="{Binding TrafficValueLabel}" FontWeight="Bold" FontSize="13" HorizontalAlignment="Right"/>
+                            <TextBlock Text="Трафик" FontWeight="SemiBold" FontSize="{s:Fs 12}" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <TextBlock Text="{Binding TrafficValueLabel}" FontWeight="Bold" FontSize="{s:Fs 13}" HorizontalAlignment="Right"/>
                         </Grid>
                         <c:ShimmerBar Value="{Binding TrafficFraction}" Margin="0,9,0,0" IsVisible="{Binding ShowTrafficBar}"/>
-                        <TextBlock Classes="muted" Text="{Binding TrafficExpiryLabel}" FontSize="11" Margin="0,9,0,0"/>
+                        <TextBlock Classes="muted" Text="{Binding TrafficExpiryLabel}" FontSize="{s:Fs 11}" Margin="0,9,0,0"/>
                     </StackPanel>
                 </Button>
             </c:GlassPanel>

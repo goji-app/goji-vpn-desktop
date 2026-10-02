@@ -1,3 +1,4 @@
+using GodjiVpn.Utils;
 using System.Collections;
 using System.Collections.Specialized;
 using System.Windows.Input;
@@ -132,7 +133,7 @@ public class SegmentedControl : UserControl
             var item = items[i];
             var label = new TextBlock
             {
-                FontSize = LabelFontSize,
+                [!TextBlock.FontSizeProperty] = FontScale.For(LabelFontSize),
                 FontWeight = FontWeight.Bold,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 HorizontalAlignment = HorizontalAlignment.Center,

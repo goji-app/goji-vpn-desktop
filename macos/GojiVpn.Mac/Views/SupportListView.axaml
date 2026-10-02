@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="using:GodjiVpn.Utils"
              xmlns:c="using:GodjiVpn.Controls"
              x:Class="GodjiVpn.Views.SupportListView">
     <!-- Список обращений: заголовок + закрыть, "Новое обращение", FAQ, сегмент
@@ -25,7 +26,7 @@
 
         <ScrollViewer Grid.Row="1">
             <StackPanel Margin="16,0,16,16">
-                <Button Classes="ink" Height="48" FontSize="14" Content="Новое обращение" Command="{Binding NewTicketCommand}"/>
+                <Button Classes="ink" Height="48" FontSize="{s:Fs 14}" Content="Новое обращение" Command="{Binding NewTicketCommand}"/>
                 <Button Classes="link" Content="Часто задаваемые вопросы" Padding="8,12" Command="{Binding OpenFaqCommand}"/>
 
                 <c:SegmentedControl ItemsSource="{Binding TabLabels}" SelectedIndex="{Binding Tab, Mode=OneWay}"
@@ -35,13 +36,13 @@
 
                 <c:GlassPanel Classes="card" CornerRadius="24" Margin="0,14,0,0" IsVisible="{Binding LoadError}">
                     <StackPanel Margin="20" HorizontalAlignment="Center">
-                        <TextBlock Classes="muted" Text="Не удалось загрузить обращения" FontSize="12.5"/>
+                        <TextBlock Classes="muted" Text="Не удалось загрузить обращения" FontSize="{s:Fs 12.5}"/>
                         <Button Classes="chip" Content="Повторить" Margin="0,10,0,0" HorizontalAlignment="Center" Command="{Binding RetryCommand}"/>
                     </StackPanel>
                 </c:GlassPanel>
 
                 <c:GlassPanel Classes="card" CornerRadius="24" Margin="0,14,0,0" IsVisible="{Binding ShowEmpty}">
-                    <TextBlock Classes="muted" Margin="20" HorizontalAlignment="Center" FontSize="12.5" Text="{Binding EmptyText}"/>
+                    <TextBlock Classes="muted" Margin="20" HorizontalAlignment="Center" FontSize="{s:Fs 12.5}" Text="{Binding EmptyText}"/>
                 </c:GlassPanel>
 
                 <c:GlassPanel Classes="card" CornerRadius="24" Margin="0,14,0,0" IsVisible="{Binding ShowTickets}">
@@ -53,18 +54,18 @@
                                     <Button Classes="row" Padding="16,12" Click="OnTicketClick" Tag="{Binding}">
                                         <Grid ColumnDefinitions="*,Auto,Auto">
                                             <StackPanel>
-                                                <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Classes="muted" Text="{Binding LastMessage}" FontSize="11.5" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="{s:Fs 13.5}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Classes="muted" Text="{Binding LastMessage}" FontSize="{s:Fs 11.5}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
                                                            Margin="0,2,0,0" IsVisible="{Binding LastMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                    <TextBlock Classes="status" Classes.closed="{Binding IsClosed}" Text="{Binding StatusLabel}" FontSize="10.5" FontWeight="SemiBold"/>
-                                                    <TextBlock Text="{Binding DateLabel, StringFormat=' · {0}'}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                    <TextBlock Classes="status" Classes.closed="{Binding IsClosed}" Text="{Binding StatusLabel}" FontSize="{s:Fs 10.5}" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding DateLabel, StringFormat=' · {0}'}" FontSize="{s:Fs 10.5}" Foreground="{DynamicResource TextSecondaryBrush}"
                                                                IsVisible="{Binding DateLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                                 </StackPanel>
                                             </StackPanel>
                                             <Border Grid.Column="1" Background="{DynamicResource DangerBrush}" CornerRadius="10" MinWidth="20" Height="20"
                                                     Padding="6,0" Margin="10,0,0,0" VerticalAlignment="Center" IsVisible="{Binding HasUnread}">
-                                                <TextBlock Text="{Binding UnreadCount}" FontSize="10.5" FontWeight="Bold" Foreground="White"
+                                                <TextBlock Text="{Binding UnreadCount}" FontSize="{s:Fs 10.5}" FontWeight="Bold" Foreground="White"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Border>
                                             <Path Grid.Column="2" Classes="icon secondary" Data="{StaticResource IconChevronRight}" Width="15" Height="15" Margin="10,0,0,0"/>

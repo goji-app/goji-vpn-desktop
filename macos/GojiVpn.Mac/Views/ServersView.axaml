@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="using:GodjiVpn.Utils"
              xmlns:c="using:GodjiVpn.Controls"
              xmlns:conv="using:GodjiVpn.Converters"
              x:Class="GodjiVpn.Views.ServersView">
@@ -48,7 +49,7 @@
                                 <c:Spinner Foreground="{DynamicResource TerracottaBrush}" IsVisible="{Binding IsRefreshing}"/>
                             </Panel>
                         </Button>
-                        <TextBlock Text="Обновить" FontWeight="Bold" FontSize="9.5" Foreground="{DynamicResource TerracottaBrush}" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                        <TextBlock Text="Обновить" FontWeight="Bold" FontSize="{s:Fs 9.5}" Foreground="{DynamicResource TerracottaBrush}" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                     <StackPanel>
                         <Button Classes="circle" Command="{Binding PingAllCommand}">
@@ -58,7 +59,7 @@
                                 <c:Spinner Foreground="{DynamicResource TealDeepBrush}" IsVisible="{Binding IsCheckingAll}"/>
                             </Panel>
                         </Button>
-                        <TextBlock Text="Пинг" FontWeight="Bold" FontSize="9.5" Foreground="{DynamicResource TealDeepBrush}" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                        <TextBlock Text="Пинг" FontWeight="Bold" FontSize="{s:Fs 9.5}" Foreground="{DynamicResource TealDeepBrush}" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </StackPanel>
             </Grid>
@@ -72,7 +73,7 @@
                         <Ellipse Classes="bannerDot" Classes.error="{Binding RefreshResultIsError}"/>
                         <Path Classes="icon bannerIcon white" Classes.error="{Binding RefreshResultIsError}" Width="13" Height="13"/>
                     </Panel>
-                    <TextBlock Grid.Column="1" Text="{Binding RefreshResultMessage}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap"
+                    <TextBlock Grid.Column="1" Text="{Binding RefreshResultMessage}" FontWeight="SemiBold" FontSize="{s:Fs 12}" TextWrapping="Wrap"
                                VerticalAlignment="Center" Margin="10,0"/>
                     <Button Grid.Column="2" Classes="bare" Command="{Binding DismissRefreshResultCommand}" VerticalAlignment="Center">
                         <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource HairBrush}">
@@ -103,7 +104,7 @@
                                                           IsVisible="{Binding FlagImagePath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
                                                 </Panel>
                                             </Border>
-                                            <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontWeight="Bold" FontSize="13.5"
+                                            <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontWeight="Bold" FontSize="{s:Fs 13.5}"
                                                        VerticalAlignment="Center" Margin="12,0,8,0" TextTrimming="CharacterEllipsis"/>
                                             <Path Grid.Column="2" Classes="icon teal" Data="{StaticResource IconCheck}" Width="18" Height="18" IsVisible="{Binding IsSelected}"/>
                                         </Grid>
@@ -116,7 +117,7 @@
                                             Command="{Binding $parent[ItemsControl].DataContext.PingOneCommand}" CommandParameter="{Binding}">
                                         <c:GlassPanel Classes="flat" CornerRadius="999" MinWidth="70" Height="30" Padding="11,0">
                                             <TextBlock Classes="ping" Classes.good="{Binding PingGood}" Classes.mid="{Binding PingMid}" Classes.bad="{Binding PingBad}"
-                                                       Text="{Binding PingLabel}" FontWeight="Bold" FontSize="11.5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                       Text="{Binding PingLabel}" FontWeight="Bold" FontSize="{s:Fs 11.5}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </c:GlassPanel>
                                     </Button>
                                     <Button Grid.Column="3" Classes="bare" Padding="4" Margin="0,0,10,0" VerticalAlignment="Center" IsVisible="{Binding IsCustom}"

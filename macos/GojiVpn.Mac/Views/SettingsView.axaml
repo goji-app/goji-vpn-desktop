@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="using:GodjiVpn.Utils"
              xmlns:c="using:GodjiVpn.Controls"
              x:Class="GodjiVpn.Views.SettingsView">
     <!-- Настройки v5 «Стекло» — как SettingsView Windows-клиента (без правил Wi-Fi):
@@ -36,6 +37,9 @@
                         <TextBlock Classes="rowTitle" Text="Тема оформления"/>
                         <c:SegmentedControl ItemsSource="{Binding ThemeModes}" DisplayMemberPath="Label"
                                             SelectedIndex="{Binding ThemeIndex, Mode=TwoWay}" Margin="0,9,0,0"/>
+                        <TextBlock Classes="rowTitle" Text="Размер шрифта" Margin="0,14,0,0"/>
+                        <c:SegmentedControl ItemsSource="{Binding FontSizes}" DisplayMemberPath="Label"
+                                            SelectedIndex="{Binding FontSizeIndex, Mode=TwoWay}" Margin="0,9,0,0"/>
                     </StackPanel>
                 </c:GlassPanel>
 
@@ -78,22 +82,22 @@
                                         <Path Classes="icon white verdictIcon" Classes.ok="{Binding LeakOk}" Width="15" Height="15"/>
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding LeakTitle}" FontWeight="Bold" FontSize="14"/>
-                                        <TextBlock Classes="muted" Text="{Binding LeakDesc}" FontSize="11.5" LineHeight="16" Margin="0,2,0,0"/>
+                                        <TextBlock Text="{Binding LeakTitle}" FontWeight="Bold" FontSize="{s:Fs 14}"/>
+                                        <TextBlock Classes="muted" Text="{Binding LeakDesc}" FontSize="{s:Fs 11.5}" LineHeight="16" Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>
                             <Grid ColumnDefinitions="Auto,*" Margin="0,12,0,0" IsVisible="{Binding LeakSiteIp, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <TextBlock Classes="muted" Text="IP для сайтов" FontSize="12.5"/>
-                                <TextBlock Grid.Column="1" Text="{Binding LeakSiteIp}" FontWeight="SemiBold" FontSize="12.5" TextAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
+                                <TextBlock Classes="muted" Text="IP для сайтов" FontSize="{s:Fs 12.5}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding LeakSiteIp}" FontWeight="SemiBold" FontSize="{s:Fs 12.5}" TextAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
                             </Grid>
                             <Grid ColumnDefinitions="Auto,*" Margin="0,10,0,0" IsVisible="{Binding LeakRealIp, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <TextBlock Classes="muted" Text="Настоящий IP" FontSize="12.5"/>
-                                <TextBlock Grid.Column="1" Text="{Binding LeakRealIp}" FontWeight="SemiBold" FontSize="12.5" TextAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
+                                <TextBlock Classes="muted" Text="Настоящий IP" FontSize="{s:Fs 12.5}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding LeakRealIp}" FontWeight="SemiBold" FontSize="{s:Fs 12.5}" TextAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
                             </Grid>
                             <Grid ColumnDefinitions="Auto,*" Margin="0,10,0,0" IsVisible="{Binding LeakDns, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <TextBlock Classes="muted" Text="DNS-резолвер" FontSize="12.5"/>
-                                <TextBlock Grid.Column="1" Text="{Binding LeakDns}" FontWeight="SemiBold" FontSize="12.5" TextAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
+                                <TextBlock Classes="muted" Text="DNS-резолвер" FontSize="{s:Fs 12.5}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding LeakDns}" FontWeight="SemiBold" FontSize="{s:Fs 12.5}" TextAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
                             </Grid>
                         </StackPanel>
                     </StackPanel>
@@ -135,28 +139,28 @@
                         </Grid>
                         <StackPanel Orientation="Horizontal" Height="34" IsVisible="{Binding ShowUpdateChecking}">
                             <c:Spinner VerticalAlignment="Center"/>
-                            <TextBlock Classes="muted" Text="Проверка обновлений…" FontWeight="SemiBold" FontSize="12.5" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <TextBlock Classes="muted" Text="Проверка обновлений…" FontWeight="SemiBold" FontSize="{s:Fs 12.5}" Margin="10,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel IsVisible="{Binding ShowUpdateAvailable}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock FontWeight="Bold" FontSize="14" VerticalAlignment="Center"
+                                <TextBlock FontWeight="Bold" FontSize="{s:Fs 14}" VerticalAlignment="Center"
                                            Text="{Binding AvailableUpdate.VersionLabel, StringFormat='Доступна версия {0}'}"/>
                                 <c:HoloBadge Text="НОВАЯ" Icon="✦" Reverse="True" Margin="8,0,0,0"/>
                             </StackPanel>
                             <Border Background="{DynamicResource ChipBrush}" CornerRadius="16" Padding="12,10" Margin="0,10,0,0" MaxHeight="220"
                                     IsVisible="{Binding HasUpdateChangelog}">
                                 <ScrollViewer>
-                                    <SelectableTextBlock Text="{Binding UpdateChangelogText}" FontSize="12.5" TextWrapping="Wrap"
+                                    <SelectableTextBlock Text="{Binding UpdateChangelogText}" FontSize="{s:Fs 12.5}" TextWrapping="Wrap"
                                                          Foreground="{DynamicResource TextPrimaryBrush}"/>
                                 </ScrollViewer>
                             </Border>
-                            <Button Classes="accent" Height="44" FontSize="13.5" Margin="0,10,0,0" Content="Скачать обновление"
+                            <Button Classes="accent" Height="44" FontSize="{s:Fs 13.5}" Margin="0,10,0,0" Content="Скачать обновление"
                                     Command="{Binding DownloadAndInstallUpdateCommand}"/>
                         </StackPanel>
                         <StackPanel IsVisible="{Binding IsDownloadingUpdate}">
                             <Grid>
-                                <TextBlock Text="Загрузка обновления…" FontWeight="SemiBold" FontSize="12.5"/>
-                                <TextBlock Classes="muted" Text="{Binding DownloadPercentLabel}" FontWeight="SemiBold" FontSize="12.5" HorizontalAlignment="Right"/>
+                                <TextBlock Text="Загрузка обновления…" FontWeight="SemiBold" FontSize="{s:Fs 12.5}"/>
+                                <TextBlock Classes="muted" Text="{Binding DownloadPercentLabel}" FontWeight="SemiBold" FontSize="{s:Fs 12.5}" HorizontalAlignment="Right"/>
                             </Grid>
                             <c:ShimmerBar Value="{Binding DownloadProgress}" Margin="0,10,0,0"/>
                         </StackPanel>
@@ -166,36 +170,36 @@
                 <!-- О программе: строки копируются по нажатию. -->
                 <Grid Margin="8,16,8,8">
                     <TextBlock Classes="section" Text="О ПРОГРАММЕ · НАЖМИ, ЧТОБЫ СКОПИРОВАТЬ" Margin="0"/>
-                    <TextBlock Text="{Binding CopiedToast}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TealDeepBrush}"
+                    <TextBlock Text="{Binding CopiedToast}" FontWeight="Bold" FontSize="{s:Fs 11}" Foreground="{DynamicResource TealDeepBrush}"
                                HorizontalAlignment="Right" IsVisible="{Binding CopiedToast, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 </Grid>
                 <c:GlassPanel Classes="card" CornerRadius="24">
                     <StackPanel>
                         <Button Classes="row" Padding="14,12" Command="{Binding CopyAboutCommand}" CommandParameter="{Binding AppVersion}">
                             <Grid ColumnDefinitions="Auto,*">
-                                <TextBlock Classes="muted" Text="Версия программы" FontSize="13"/>
-                                <TextBlock Grid.Column="1" Text="{Binding AppVersion}" FontWeight="SemiBold" FontSize="13" TextAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
+                                <TextBlock Classes="muted" Text="Версия программы" FontSize="{s:Fs 13}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding AppVersion}" FontWeight="SemiBold" FontSize="{s:Fs 13}" TextAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
                             </Grid>
                         </Button>
                         <Rectangle Classes="hair"/>
                         <Button Classes="row" Padding="14,12" Command="{Binding CopyAboutCommand}" CommandParameter="{Binding XrayVersion}">
                             <Grid ColumnDefinitions="Auto,*">
-                                <TextBlock Classes="muted" Text="Версия XRAY" FontSize="13"/>
-                                <TextBlock Grid.Column="1" Text="{Binding XrayVersion}" FontWeight="SemiBold" FontSize="13" TextAlignment="Right" Margin="12,0,0,0"/>
+                                <TextBlock Classes="muted" Text="Версия XRAY" FontSize="{s:Fs 13}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding XrayVersion}" FontWeight="SemiBold" FontSize="{s:Fs 13}" TextAlignment="Right" Margin="12,0,0,0"/>
                             </Grid>
                         </Button>
                         <Rectangle Classes="hair"/>
                         <Button Classes="row" Padding="14,12" Command="{Binding CopyAboutCommand}" CommandParameter="{Binding Hwid}">
                             <Grid ColumnDefinitions="Auto,*">
-                                <TextBlock Classes="muted" Text="HWID" FontSize="13"/>
-                                <TextBlock Grid.Column="1" Text="{Binding Hwid}" FontWeight="SemiBold" FontSize="13" TextAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
+                                <TextBlock Classes="muted" Text="HWID" FontSize="{s:Fs 13}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Hwid}" FontWeight="SemiBold" FontSize="{s:Fs 13}" TextAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
                             </Grid>
                         </Button>
                         <Rectangle Classes="hair"/>
                         <Button Classes="row" Padding="14,12" Command="{Binding CopyAboutCommand}" CommandParameter="{Binding DeviceInfo}">
                             <Grid ColumnDefinitions="Auto,*">
-                                <TextBlock Classes="muted" Text="Об устройстве" FontSize="13"/>
-                                <TextBlock Grid.Column="1" Text="{Binding DeviceInfo}" FontWeight="SemiBold" FontSize="13" TextAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
+                                <TextBlock Classes="muted" Text="Об устройстве" FontSize="{s:Fs 13}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding DeviceInfo}" FontWeight="SemiBold" FontSize="{s:Fs 13}" TextAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
                             </Grid>
                         </Button>
                     </StackPanel>
@@ -211,7 +215,7 @@
                                     <Button Classes="row" Padding="14,12"
                                             Command="{Binding $parent[ItemsControl].DataContext.OpenLogCommand}" CommandParameter="{Binding}">
                                         <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Text="{Binding Label}" FontWeight="Medium" FontSize="13.5"/>
+                                            <TextBlock Text="{Binding Label}" FontWeight="Medium" FontSize="{s:Fs 13.5}"/>
                                             <Path Grid.Column="1" Classes="icon secondary" Data="{StaticResource IconChevronRight}" Width="15" Height="15" Margin="12,0,0,0"/>
                                         </Grid>
                                     </Button>
@@ -224,7 +228,7 @@
                 <TextBlock Classes="section" Text="АККАУНТ"/>
                 <Button Classes="bare" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Command="{Binding LogoutCommand}">
                     <c:GlassPanel Classes="card" CornerRadius="24" Height="50">
-                        <TextBlock Text="Выйти из аккаунта" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource DangerBrush}"
+                        <TextBlock Text="Выйти из аккаунта" FontWeight="Bold" FontSize="{s:Fs 14}" Foreground="{DynamicResource DangerBrush}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </c:GlassPanel>
                 </Button>
@@ -238,12 +242,12 @@
                     <Button Classes="bare back" Command="{Binding BackCommand}">
                         <Path Classes="icon" Data="{StaticResource IconArrowBack}" Width="22" Height="22"/>
                     </Button>
-                    <TextBlock Classes="subTitle" Text="Настройки пинга" FontSize="24"/>
+                    <TextBlock Classes="subTitle" Text="Настройки пинга" FontSize="{s:Fs 24}"/>
                 </StackPanel>
                 <TextBlock Classes="section" Text="ПРОВЕРКА СЕРВЕРОВ" Margin="8,14,8,8"/>
                 <c:GlassPanel Classes="card" CornerRadius="24">
                     <StackPanel Margin="16">
-                        <TextBlock Classes="muted" Text="Способ пинга" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,6"/>
+                        <TextBlock Classes="muted" Text="Способ пинга" FontWeight="SemiBold" FontSize="{s:Fs 11}" Margin="0,0,0,6"/>
                         <ItemsControl ItemsSource="{Binding PingMethods}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -254,14 +258,14 @@
                                                 <Ellipse Classes="radioRing" Classes.on="{Binding IsSelected}" StrokeThickness="2"/>
                                                 <Ellipse Width="10" Height="10" Fill="{DynamicResource TealDeepBrush}" IsVisible="{Binding IsSelected}"/>
                                             </Panel>
-                                            <TextBlock Text="{Binding Label}" FontWeight="Medium" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Label}" FontWeight="Medium" FontSize="{s:Fs 13}" Margin="12,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBlock Classes="muted" Text="URL для теста (через прокси)" FontWeight="SemiBold" FontSize="11" Margin="0,14,0,6"/>
-                        <TextBox Classes="glass" FontSize="12.5" Text="{Binding PingTestUrl}"/>
+                        <TextBlock Classes="muted" Text="URL для теста (через прокси)" FontWeight="SemiBold" FontSize="{s:Fs 11}" Margin="0,14,0,6"/>
+                        <TextBox Classes="glass" FontSize="{s:Fs 12.5}" Text="{Binding PingTestUrl}"/>
                     </StackPanel>
                 </c:GlassPanel>
             </StackPanel>
@@ -274,24 +278,24 @@
                     <Button Classes="bare back" Command="{Binding BackCommand}">
                         <Path Classes="icon" Data="{StaticResource IconArrowBack}" Width="22" Height="22"/>
                     </Button>
-                    <TextBlock Classes="subTitle" Text="Сайты мимо VPN" FontSize="24"/>
+                    <TextBlock Classes="subTitle" Text="Сайты мимо VPN" FontSize="{s:Fs 24}"/>
                 </StackPanel>
                 <TextBlock Classes="muted" LineHeight="17" Margin="8,10,8,10"
                            Text="Трафик к этим сайтам (и их поддоменам) пойдёт напрямую через твоего провайдера, остальное — через VPN. Удобно для банков, госуслуг и локальных сервисов, которые не любят VPN."/>
                 <Border Classes="bypassBox" Classes.error="{Binding BypassError}" Height="50" Padding="16,0,6,0" CornerRadius="25"
                         BorderThickness="1" Background="{DynamicResource ChipBrush}">
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBox Name="BypassBox" Classes="bare" Text="{Binding BypassInput}" VerticalAlignment="Center" FontSize="13.5" FontWeight="SemiBold"
+                        <TextBox Name="BypassBox" Classes="bare" Text="{Binding BypassInput}" VerticalAlignment="Center" FontSize="{s:Fs 13.5}" FontWeight="SemiBold"
                                  Watermark="Например, sberbank.ru"/>
-                        <Button Grid.Column="1" Classes="accent" Height="38" FontSize="12.5" Margin="10,0,0,0" Content="Добавить"
+                        <Button Grid.Column="1" Classes="accent" Height="38" FontSize="{s:Fs 12.5}" Margin="10,0,0,0" Content="Добавить"
                                 HorizontalAlignment="Right" Command="{Binding AddBypassCommand}"/>
                     </Grid>
                 </Border>
-                <TextBlock Classes="error" Text="Это не похоже на адрес сайта" FontWeight="SemiBold" FontSize="11.5" Margin="12,8,12,0"
+                <TextBlock Classes="error" Text="Это не похоже на адрес сайта" FontWeight="SemiBold" FontSize="{s:Fs 11.5}" Margin="12,8,12,0"
                            IsVisible="{Binding BypassError}"/>
                 <Border CornerRadius="20" Background="{DynamicResource TealTintBrush}" Padding="14,8,8,8" Margin="0,10,0,0" IsVisible="{Binding ShowBypassApply}">
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Text="Изменения применятся после переподключения VPN" FontWeight="SemiBold" FontSize="12" LineHeight="16"
+                        <TextBlock Text="Изменения применятся после переподключения VPN" FontWeight="SemiBold" FontSize="{s:Fs 12}" LineHeight="16"
                                    TextWrapping="Wrap" VerticalAlignment="Center"/>
                         <Button Grid.Column="1" Classes="chip" Content="Применить" Margin="10,0,0,0" Command="{Binding ApplyBypassCommand}"/>
                     </Grid>
@@ -307,8 +311,8 @@
                                         <Rectangle Classes="hair sep"/>
                                         <Grid ColumnDefinitions="*,Auto" Margin="14,10,10,10">
                                             <StackPanel VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Shown}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Classes="muted" Text="вместе с поддоменами" FontSize="11" Margin="0,1,0,0"/>
+                                                <TextBlock Text="{Binding Shown}" FontWeight="SemiBold" FontSize="{s:Fs 14}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Classes="muted" Text="вместе с поддоменами" FontSize="{s:Fs 11}" Margin="0,1,0,0"/>
                                             </StackPanel>
                                             <Button Grid.Column="1" Classes="bare" Width="28" Height="28" Margin="12,0,0,0"
                                                     Command="{Binding $parent[ItemsControl].DataContext.RemoveBypassCommand}" CommandParameter="{Binding}">
@@ -332,7 +336,7 @@
                 <Button Classes="bare back" Command="{Binding BackCommand}">
                     <Path Classes="icon" Data="{StaticResource IconArrowBack}" Width="22" Height="22"/>
                 </Button>
-                <TextBlock Grid.Column="1" Classes="subTitle" Text="{Binding SelectedLogFile.Label}" FontSize="24"/>
+                <TextBlock Grid.Column="1" Classes="subTitle" Text="{Binding SelectedLogFile.Label}" FontSize="{s:Fs 24}"/>
                 <Button Grid.Column="2" Classes="circle" Margin="10,0,0,0" Command="{Binding RefreshLogCommand}" ToolTip.Tip="Обновить">
                     <Path Classes="icon teal" Data="{StaticResource IconRefresh}" Width="16" Height="16"/>
                 </Button>
@@ -340,9 +344,9 @@
             <c:GlassPanel Grid.Row="1" Classes="card" CornerRadius="24" Margin="0,14,0,0">
                 <Panel Margin="4">
                     <TextBox Name="LogBox" Classes="bare" Text="{Binding LogContent}" IsReadOnly="True" TextWrapping="NoWrap"
-                             FontFamily="Menlo, Consolas, Courier New" FontSize="10.5" Padding="8" VerticalContentAlignment="Top"
+                             FontFamily="Menlo, Consolas, Courier New" FontSize="{s:Fs 10.5}" Padding="8" VerticalContentAlignment="Top"
                              ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
-                    <TextBlock Classes="muted" Text="Журнал пока пуст." FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <TextBlock Classes="muted" Text="Журнал пока пуст." FontSize="{s:Fs 13}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                IsHitTestVisible="False" IsVisible="{Binding IsLogEmpty}"/>
                 </Panel>
             </c:GlassPanel>

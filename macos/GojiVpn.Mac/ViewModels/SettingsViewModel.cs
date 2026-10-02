@@ -30,6 +30,12 @@ public sealed partial class ThemeModeItem : ObservableObject
     [ObservableProperty] private bool isSelected;
 }
 
+public sealed class FontSizeItem
+{
+    public required string Label { get; init; }
+    public required FontSizePreset Preset { get; init; }
+}
+
 public sealed class BypassDomainItem
 {
     public required string Domain { get; init; }
@@ -185,6 +191,26 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             if (value < 0 || value >= ThemeModes.Count || ThemeModes[value].Mode == _theme.Mode) return;
             SelectThemeMode(ThemeModes[value]);
+        }
+    }
+
+    /// <summary>Размер шрифта — как в Android: только текст, разметка не меняется.</summary>
+    public ObservableCollection<FontSizeItem> FontSizes { get; } = new()
+    {
+        new FontSizeItem { Label = "Маленький", Preset = FontSizePreset.Small },
+        new FontSizeItem { Label = "Нормальный", Preset = FontSizePreset.Normal },
+        new FontSizeItem { Label = "Большой", Preset = FontSizePreset.Large },
+    };
+
+    public int FontSizeIndex
+    {
+        get => Math.Max(0, FontSizes.ToList().FindIndex(f => f.Preset == _appSettings.FontSize));
+        set
+        {
+            if (value < 0 || value >= FontSizes.Count || FontSizes[value].Preset == _appSettings.FontSize) return;
+            _appSettings.FontSize = FontSizes[value].Preset;
+            FontScale.Instance.Apply(_appSettings.FontSize);
+            OnPropertyChanged();
         }
     }
 
