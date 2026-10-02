@@ -44,7 +44,7 @@ public sealed class BypassDomainItem
 
 /// <summary>Подэкраны Настроек — в Android это отдельные маршруты навигации
 /// (PingSettingsScreen, LogViewerDialog); здесь — подмена содержимого вкладки.</summary>
-public enum SettingsPage { Main, Ping, Log, Bypass }
+public enum SettingsPage { Main, Appearance, Connection, Security, Updates, About, Ping, Log, Bypass }
 
 /// <summary>Аналог SettingsScreen.kt — версия/HWID (About), просмотр логов вместо отдельного
 /// LogViewerDialog.kt (здесь один экран проще нескольких диалогов на маленьком приложении),
@@ -140,13 +140,18 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsMainPage), nameof(IsPingPage), nameof(IsLogPage), nameof(IsBypassPage))]
+    [NotifyPropertyChangedFor(nameof(IsMainPage), nameof(IsPingPage), nameof(IsLogPage), nameof(IsBypassPage), nameof(IsAppearancePage), nameof(IsConnectionPage), nameof(IsSecurityPage), nameof(IsUpdatesPage), nameof(IsAboutPage))]
     private SettingsPage page = SettingsPage.Main;
 
     public bool IsMainPage => Page == SettingsPage.Main;
     public bool IsPingPage => Page == SettingsPage.Ping;
     public bool IsLogPage => Page == SettingsPage.Log;
     public bool IsBypassPage => Page == SettingsPage.Bypass;
+    public bool IsAppearancePage => Page == SettingsPage.Appearance;
+    public bool IsConnectionPage => Page == SettingsPage.Connection;
+    public bool IsSecurityPage => Page == SettingsPage.Security;
+    public bool IsUpdatesPage => Page == SettingsPage.Updates;
+    public bool IsAboutPage => Page == SettingsPage.About;
     public bool IsLogEmpty => string.IsNullOrWhiteSpace(LogContent);
 
     [ObservableProperty]
@@ -260,6 +265,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         selectedLogFile.IsSelected = true;
         foreach (var m in PingMethods) m.IsSelected = m.Method == _pingSettings.Method;
         pingTestUrl = _pingSettings.TestUrl;
+        // Превью-экземпляр: сразу нужный подэкран (GODJI_UI_PREVIEW_SETTINGS=Bypass и т.п.).
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW") == "1" &&
+            Enum.TryParse<SettingsPage>(Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_SETTINGS"), true, out var previewPage))
+        {
+            Page = previewPage;
+            if (previewPage == SettingsPage.Bypass) RefreshBypass();
+        }
         foreach (var m in ThemeModes) m.IsSelected = m.Mode == _theme.Mode;
     }
 
@@ -311,7 +323,28 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Back() => Page = SettingsPage.Main;
+    private void Back() => Page = Page switch
+    {
+        // Без прокрутки настройки разложены по разделам: «назад» — на уровень выше.
+        SettingsPage.Ping or SettingsPage.Bypass => SettingsPage.Connection,
+        SettingsPage.Log => SettingsPage.About,
+        _ => SettingsPage.Main
+    };
+
+    [RelayCommand]
+    private void OpenAppearance() => Page = SettingsPage.Appearance;
+
+    [RelayCommand]
+    private void OpenConnection() => Page = SettingsPage.Connection;
+
+    [RelayCommand]
+    private void OpenSecurity() => Page = SettingsPage.Security;
+
+    [RelayCommand]
+    private void OpenUpdates() => Page = SettingsPage.Updates;
+
+    [RelayCommand]
+    private void OpenAbout() => Page = SettingsPage.About;
 
     // ── Сайты мимо VPN (порт 6803326) ──
     public ObservableCollection<BypassDomainItem> BypassDomains { get; } = new();
@@ -367,6 +400,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         BypassDomains.Clear();
         foreach (var d in _appSettings.BypassDomains)
             BypassDomains.Add(new BypassDomainItem { Domain = d, Shown = AppSettings.ToDisplay(d) });
+        // Только для превью-экземпляра (GODJI_UI_PREVIEW_DEMO=1): сверка постраничного списка,
+        // в настройки не сохраняется.
+        if (BypassDomains.Count == 0 && Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_DEMO") == "1")
+            foreach (var d in new[] { "sberbank.ru", "gosuslugi.ru", "nalog.gov.ru", "tbank.ru", "vk.com", "ozon.ru", "wildberries.ru",
+                                      "yandex.ru", "mos.ru", "avito.ru", "kinopoisk.ru", "rzd.ru", "pochta.ru", "hh.ru" })
+                BypassDomains.Add(new BypassDomainItem { Domain = d, Shown = d });
         OnPropertyChanged(nameof(BypassListLabel));
         OnPropertyChanged(nameof(BypassEmpty));
     }
