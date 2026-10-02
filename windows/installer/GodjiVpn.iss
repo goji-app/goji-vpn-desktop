@@ -3,7 +3,9 @@
 ; сначала делает dotnet publish, потом компилирует этот скрипт через ISCC.exe.
 
 #define MyAppName "Godji VPN"
-#define MyAppVersion "1.0.63"
+#ifndef MyAppVersion
+  #define MyAppVersion "1.0.71"
+#endif
 #define MyAppPublisher "Godji"
 #define MyAppExeName "GodjiVpn.exe"
 #define MyAppMutex "GodjiVpn.SingleInstance.Mutex"

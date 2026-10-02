@@ -47,7 +47,10 @@ foreach ($loc in $satelliteLocales) {
 
 Write-Host "== Компиляция установщика (Inno Setup) ==" -ForegroundColor Cyan
 $iscc = Find-Iscc
-& $iscc $issFile
+# Версия — из GodjiVpn.csproj, чтобы установщик не отставал от приложения.
+$version = ([xml](Get-Content $proj -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+if (-not $version) { throw "Не нашёл <Version> в $proj" }
+& $iscc "/DMyAppVersion=$version" $issFile
 if ($LASTEXITCODE -ne 0) { throw "ISCC.exe завершился с ошибкой" }
 
 Write-Host "== Уборка промежуточной publish-папки ==" -ForegroundColor Cyan
