@@ -27,8 +27,8 @@ cat > "$work/sing-box.json" <<'EOF'
  "inbounds":[{"type":"tun","tag":"tun-in","address":["172.19.0.1/30"],"mtu":1280,"auto_route":true,"strict_route":true,"stack":"system"}],
  "outbounds":[{"type":"socks","tag":"socks-out","server":"127.0.0.1","server_port":10808,"version":"5"},{"type":"direct","tag":"direct"}],
  "route":{"auto_detect_interface":true,
-  "rules":[{"action":"sniff"},{"protocol":"dns","action":"hijack-dns"},
-           {"process_name":["xray","GojiVpn"],"outbound":"direct"},
+  "rules":[{"action":"sniff"},{"process_name":["xray","GojiVpn"],"outbound":"direct"},
+           {"protocol":"dns","action":"hijack-dns"},
            {"ip_cidr":["169.254.0.0/16"],"action":"reject"}],
   "final":"socks-out"}}
 EOF
@@ -44,13 +44,13 @@ sleep 2
 
 echo "== [$arch] запуск обёртки от root"
 sudo env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME=/var/root \
-  nohup /bin/sh -c "$(cat "$work/wrapper.sh")" goji-tun "$rt/sing-box" "$work/sing-box.json" "$sblog" $$ "$stop" "$pid" 172.19.0.2 \
+  nohup /bin/sh -c "$(cat "$work/wrapper.sh")" goji-tun "$rt/sing-box" "$work/sing-box.json" "$sblog" $$ "$stop" "$pid" 1.1.1.1 \
   > /dev/null 2>&1 &
 if dotnet "$work/probe/tun-probe.dll" 40; then :; else status=1; fi
 [ -f "$pid" ] && echo "OK: pid-файл $(cat "$pid")" || { echo "FAIL: нет pid-файла"; status=1; }
 sleep 3
 echo "DNS при VPN: $(dns_state)"
-dns_state | grep -q "172.19.0.2" && echo "OK: DNS подменён на 172.19.0.2" || { echo "FAIL: DNS не подменён"; status=1; }
+dns_state | grep -q "1.1.1.1" && echo "OK: DNS подменён на 1.1.1.1" || { echo "FAIL: DNS не подменён"; status=1; }
 code=$(curl -s -o /dev/null -w "%{http_code}" -m 15 https://www.apple.com/ || true)
 echo "curl: HTTP $code"; [ "$code" = 200 ] || status=1
 grep -q "inbound/tun\[tun-in\]" "$sblog" && echo "OK: трафик через TUN" || { echo "FAIL: нет трафика через TUN"; status=1; }

@@ -27,8 +27,8 @@ cat > "$work/sing-box.json" <<'EOF'
  "inbounds":[{"type":"tun","tag":"tun-in","address":["172.19.0.1/30"],"mtu":1280,"auto_route":true,"strict_route":true,"stack":"system"}],
  "outbounds":[{"type":"socks","tag":"socks-out","server":"127.0.0.1","server_port":10808,"version":"5"},{"type":"direct","tag":"direct"}],
  "route":{"auto_detect_interface":true,
-  "rules":[{"action":"sniff"},{"protocol":"dns","action":"hijack-dns"},
-           {"process_name":["xray","GojiVpn"],"outbound":"direct"},
+  "rules":[{"action":"sniff"},{"process_name":["xray","GojiVpn"],"outbound":"direct"},
+           {"protocol":"dns","action":"hijack-dns"},
            {"ip_cidr":["169.254.0.0/16"],"action":"reject"}],
   "final":"socks-out"}}
 EOF

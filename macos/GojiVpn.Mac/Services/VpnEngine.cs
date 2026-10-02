@@ -33,7 +33,10 @@ public sealed class VpnEngine : INotifyPropertyChanged
 {
     public const int SocksPort = 10808;
     private const string AdapterIp = "172.19.0.1";
-    private const string TunDnsIp = "172.19.0.2";
+    // Системный DNS на время VPN. Запросы к нему уходят в туннель (auto_route) и там
+    // перехватываются (hijack-dns). Не 172.19.0.2: это внутренний адрес стека "system" sing-box,
+    // с ним сайты не открывались.
+    private const string TunDnsIp = "1.1.1.1";
     private const string DnsIp = "1.1.1.1";
 
     public static VpnEngine? Current { get; private set; }
@@ -585,8 +588,10 @@ public sealed class VpnEngine : INotifyPropertyChanged
                 ["auto_detect_interface"] = true,
                 ["rules"] = new JsonArray(
                     new JsonObject { ["action"] = "sniff" },
-                    new JsonObject { ["protocol"] = "dns", ["action"] = "hijack-dns" },
+                    // Сначала свои процессы: иначе DNS-запросы самого xray перехватывались бы
+                    // и уходили обратно в xray по кругу.
                     new JsonObject { ["process_name"] = new JsonArray("xray", "GojiVpn"), ["outbound"] = "direct" },
+                    new JsonObject { ["protocol"] = "dns", ["action"] = "hijack-dns" },
                     new JsonObject { ["ip_cidr"] = new JsonArray("169.254.0.0/16"), ["action"] = "reject" }),
                 ["final"] = "socks-out"
             }

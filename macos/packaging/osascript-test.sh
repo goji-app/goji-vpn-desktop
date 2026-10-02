@@ -28,8 +28,8 @@ cat > "$work/sing-box.json" <<'EOF'
  "inbounds":[{"type":"tun","tag":"tun-in","address":["172.19.0.1/30"],"mtu":1280,"auto_route":true,"strict_route":true,"stack":"system"}],
  "outbounds":[{"type":"socks","tag":"socks-out","server":"127.0.0.1","server_port":10808,"version":"5"},{"type":"direct","tag":"direct"}],
  "route":{"auto_detect_interface":true,
-  "rules":[{"action":"sniff"},{"protocol":"dns","action":"hijack-dns"},
-           {"process_name":["xray","GojiVpn"],"outbound":"direct"},
+  "rules":[{"action":"sniff"},{"process_name":["xray","GojiVpn"],"outbound":"direct"},
+           {"protocol":"dns","action":"hijack-dns"},
            {"ip_cidr":["169.254.0.0/16"],"action":"reject"}],
   "final":"socks-out"}}
 EOF
@@ -42,7 +42,7 @@ q = lambda s: "'" + s.replace("'", "'\\''") + "'"
 esc = lambda s: s.replace("\\", "\\\\").replace('"', '\\"')
 script = open(f"{work}/wrapper.sh").read().replace("\r", "")
 shell = ("/bin/sh -c " + q(script) + " goji-tun " + q(sb) + " " + q(f"{work}/sing-box.json") + " " + q(log) +
-         " " + app_pid + " " + q(stop) + " " + q(pid) + " 172.19.0.2 >> " + q(wlog) + " 2>&1")
+         " " + app_pid + " " + q(stop) + " " + q(pid) + " 1.1.1.1 >> " + q(wlog) + " 2>&1")
 print(f'do shell script "{esc(shell)}" with administrator privileges user name "{os.environ["ADMIN"]}" password "{password}"')
 PY
 
@@ -64,6 +64,10 @@ echo "== держим туннель 150 с (дольше тайм-аута Appl
 sleep 150
 kill -0 $OSA 2>/dev/null && echo "OK: osascript жив" || { echo "FAIL: osascript завершился: $(cat "$work/osa.out")"; status=1; }
 ifconfig | grep -q "inet 172.19.0.1 " && echo "OK: туннель держится" || { echo "FAIL: туннель пропал"; status=1; }
+echo "DNS при VPN: $(networksetup -getdnsservers Ethernet | tr '\n' ' ')"
+code=$(curl -s -o /dev/null -w "%{http_code}" -m 20 https://www.apple.com/ || true)
+[ "$code" = 200 ] && echo "OK: сайты открываются при подменённом DNS (HTTP $code)" || { echo "FAIL: сайты не открываются при подменённом DNS (HTTP $code)"; status=1; }
+grep -c "hijack\|inbound DNS packet" "$sblog" | sed 's/^/DNS-пакетов в туннеле: /'
 
 echo "== остановка файлом-сигналом"
 touch "$stop"
