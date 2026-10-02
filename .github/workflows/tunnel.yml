@@ -48,6 +48,10 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Обёртка через osascript (как в приложении)
+        if: always()
+        run: bash packaging/osascript-test.sh arm64
+
       - name: Обёртка приложения arm64
         if: always()
         run: bash packaging/wrapper-test.sh arm64
