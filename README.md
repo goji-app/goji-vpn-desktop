@@ -15,8 +15,7 @@ Android-версия — [goji-vpn-android](https://github.com/goji-app/goji-vpn
 Все файлы — в [последнем релизе](https://github.com/goji-app/goji-vpn-desktop/releases/latest):
 
 - **Windows** — `GodjiVpn-Setup-<версия>.exe`;
-- **Mac с Apple Silicon (M1–M4)** — `GojiVPN-<версия>-macOS-arm64.dmg`;
-- **Mac с Intel** — `GojiVPN-<версия>-macOS-x64.dmg`.
+- **Mac** (любой — Intel и Apple Silicon) — `GojiVPN-<версия>-macOS.dmg`.
 
 Файлы `-macOS-*.zip` нужны для автообновления внутри приложения.
 

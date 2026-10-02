@@ -1,10 +1,11 @@
 """Сборка macOS-клиента Goji VPN.
 
 Для каждой архитектуры (arm64 — Apple Silicon, x64 — Intel):
-  dotnet publish (self-contained) -> Goji VPN.app -> ad-hoc подпись -> zip (+ dmg на Mac).
+  dotnet publish (self-contained) -> Goji VPN.app -> ad-hoc подпись -> zip для автообновления.
 
 На Mac (основной путь, GitHub Actions — .github/workflows/macos.yml): подпись штатным codesign,
-установщик GojiVPN-<v>-macOS-<arch>.dmg с окном "перетащите в Программы" и zip через ditto.
+zip через ditto и один универсальный установщик GojiVPN-<v>-macOS.dmg (Intel и Apple Silicon,
+см. build_universal) с окном "перетащите в Программы".
 На Windows (запасной путь): подпись rcodesign (tools/rcodesign.exe) и только zip.
 
 Раскладка бандла по правилам Apple: в Contents/MacOS только нативный запускатель (apphost),
@@ -123,7 +124,11 @@ def dmg_background(path, scale):
     img.save(path)
 
 
-def info_plist(ver, min_os):
+def info_plist(ver, min_os, by_arch=None):
+    arch_min = ""
+    if by_arch:
+        items = "".join(f"<key>{k}</key><string>{v}</string>" for k, v in by_arch.items())
+        arch_min = f"\n    <key>LSMinimumSystemVersionByArchitecture</key><dict>{items}</dict>"
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -137,7 +142,7 @@ def info_plist(ver, min_os):
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleVersion</key><string>{ver}</string>
     <key>CFBundleShortVersionString</key><string>{ver}</string>
-    <key>LSMinimumSystemVersion</key><string>{min_os}</string>
+    <key>LSMinimumSystemVersion</key><string>{min_os}</string>{arch_min}
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSRequiresAquaSystemAppearance</key><false/>
@@ -147,12 +152,12 @@ def info_plist(ver, min_os):
 """
 
 
-def patch_apphost(src, dst):
-    """Переносит apphost в Contents/MacOS, заменив имя сборки на путь до Resources/app."""
+def patch_apphost(src, dst, subdir="app"):
+    """Переносит apphost в Contents/MacOS, заменив имя сборки на путь до Resources/<subdir>."""
     with open(src, "rb") as f:
         data = bytearray(f.read())
     old = f"{EXE_NAME}.dll".encode() + bytes(1)
-    new = f"../Resources/app/{EXE_NAME}.dll".encode()
+    new = f"../Resources/{subdir}/{EXE_NAME}.dll".encode()
     at = data.find(old)
     if at < 0 or data.find(old, at + 1) >= 0 or any(data[at + len(old):at + len(new) + 1]):
         sys.exit("Не нашёл однозначное место для пути сборки в apphost")
@@ -322,6 +327,7 @@ def build(arch, ver):
     app_dir = os.path.join(res, "app")
     shutil.copytree(pub, app_dir)
     os.makedirs(macos)
+    shutil.copy2(os.path.join(app_dir, EXE_NAME), os.path.join(OUT, rid, "apphost"))
     patch_apphost(os.path.join(app_dir, EXE_NAME), os.path.join(macos, EXE_NAME))
     runtime_src = os.path.join(ROOT, "Runtime", arch)
     runtime_dst = os.path.join(app_dir, "Runtime")
@@ -344,8 +350,8 @@ def build(arch, ver):
     # Ad-hoc подпись: без неё Apple Silicon не запускает Mach-O вовсе (Developer ID нет).
     if ON_MAC:
         sign_on_mac(app)
+        # zip под архитектуру — для автообновления (UpdateService ищет -macOS-<arch>.zip).
         run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", app, zip_path])
-        make_dmg(app, os.path.join(DIST, f"GojiVPN-{ver}-macOS-{arch}.dmg"), ver)
     else:
         run([RCODESIGN, "sign", app])
         zip_app_windows(app, zip_path)
@@ -356,7 +362,43 @@ def build(arch, ver):
             print(f"OK {f} ({os.path.getsize(os.path.join(DIST, f)):,} байт)", flush=True)
 
 
+def build_universal(ver):
+    """Один Goji VPN.app для любого Mac: "толстый" apphost (срезы arm64 и x64), каждый срез
+    указывает на свою копию .NET и ядра — Resources/app-arm64 или Resources/app-x64.
+    macOS сама запускает нужный срез, поэтому установщик не перепутать с чужой архитектурой
+    ("программа не поддерживается этим компьютером Mac")."""
+    root = os.path.join(OUT, "universal")
+    shutil.rmtree(root, ignore_errors=True)
+    app = os.path.join(root, f"{APP_NAME}.app")
+    macos = os.path.join(app, "Contents", "MacOS")
+    res = os.path.join(app, "Contents", "Resources")
+    os.makedirs(macos)
+    slices = []
+    for arch in ("arm64", "x64"):
+        rid = f"osx-{arch}"
+        shutil.copytree(os.path.join(OUT, rid, f"{APP_NAME}.app", "Contents", "Resources", "app"),
+                        os.path.join(res, f"app-{arch}"))
+        tmp = os.path.join(root, f"apphost-{arch}")
+        shutil.copy2(os.path.join(OUT, rid, "apphost"), tmp)
+        patch_apphost(tmp, tmp + ".patched", subdir=f"app-{arch}")
+        slices.append(tmp + ".patched")
+    run(["lipo", "-create"] + slices + ["-output", os.path.join(macos, EXE_NAME)])
+    run(["lipo", "-info", os.path.join(macos, EXE_NAME)])
+    make_icns(os.path.join(res, "goji.icns"))
+    with open(os.path.join(app, "Contents", "Info.plist"), "w", encoding="utf-8", newline="\n") as f:
+        f.write(info_plist(ver, MIN_OS["x64"], {"arm64": MIN_OS["arm64"], "x86_64": MIN_OS["x64"]}))
+    check_min_os(app, "arm64")
+    check_min_os(app, "x64")
+    sign_on_mac(app)
+    dmg = os.path.join(DIST, f"GojiVPN-{ver}-macOS.dmg")
+    make_dmg(app, dmg, ver)
+    print(f"OK {os.path.basename(dmg)} ({os.path.getsize(dmg):,} байт)", flush=True)
+
+
 if __name__ == "__main__":
     v = version()
-    for a in (sys.argv[1:] or ["arm64", "x64"]):
+    archs = sys.argv[1:] or ["arm64", "x64"]
+    for a in archs:
         build(a, v)
+    if ON_MAC and set(archs) >= {"arm64", "x64"}:
+        build_universal(v)
