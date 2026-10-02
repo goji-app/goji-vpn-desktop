@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:GodjiVpn.Controls"
         Title="Godji VPN" Height="860" Width="460"
-        MinHeight="640" MinWidth="380"
+        MinHeight="480" MinWidth="280"
         Background="{DynamicResource BgSolidBrush}"
         Icon="pack://application:,,,/Assets/Images/logo.png"
         WindowStartupLocation="CenterScreen"
@@ -13,10 +13,13 @@
         RenderOptions.BitmapScalingMode="HighQuality">
     <!-- v5 «Стекло»: общий фон GlassBackdrop рисуется один раз под всем окном — экраны сами
          прозрачны (BgBrush = Transparent), иначе стеклянные карточки выглядели бы просто
-         серыми плашками. Контент ограничен MaxWidth (вёрстка под мобильную ширину): при
-         развёрнутом окне по бокам виден тот же фон, как в Telegram Desktop и т.п. -->
+         серыми плашками. Экраны свёрстаны на холсте 440×820 (FitScaler.DesignWidth/Height) и
+         целиком масштабируются под окно: растягиваешь окно — интерфейс пропорционально крупнее,
+         прокрутки нет. При другом соотношении сторон по краям виден тот же фон. -->
     <Grid>
         <controls:GlassBackdrop/>
-        <ContentControl Content="{Binding CurrentViewModel}" MaxWidth="520" HorizontalAlignment="Stretch"/>
+        <controls:FitScaler>
+            <ContentControl Content="{Binding CurrentViewModel}" Width="440" Height="820"/>
+        </controls:FitScaler>
     </Grid>
 </Window>
