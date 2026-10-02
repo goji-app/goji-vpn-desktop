@@ -157,6 +157,12 @@ public sealed partial class PlanItem : ObservableObject
 
 /// <summary>Аналог PlansScreen.kt/PlansViewModel.kt — своя подписка, DaysRing, тарифы
 /// (информационно, покупка — только по внешней ссылке на сайт, в API её нет).</summary>
+/// <summary>Раздел экрана «Подписка» (переключатель под карточкой подписки).</summary>
+public sealed class PlansSectionItem
+{
+    public required string Label { get; init; }
+}
+
 public sealed partial class PlansViewModel : ObservableObject
 {
     private const string RenewUrl = "https://gojihub.xyz/#/plans";
@@ -171,6 +177,28 @@ public sealed partial class PlansViewModel : ObservableObject
     private readonly TokenStore _tokenStore;
     private List<PlanInfo> _rawPlans = new();
     private List<NewsItem> _allNews = new();
+
+    /// <summary>Без прокрутки «Подписка» разбита на разделы: тарифы, устройства, друзья, новости —
+    /// под карточкой подписки виден один из них.</summary>
+    public IReadOnlyList<PlansSectionItem> Sections { get; } = new[]
+    {
+        new PlansSectionItem { Label = "Тарифы" },
+        new PlansSectionItem { Label = "Устройства" },
+        new PlansSectionItem { Label = "Друзья" },
+        new PlansSectionItem { Label = "Новости" },
+    };
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsTariffsSection), nameof(IsDevicesSection), nameof(IsFriendsSection), nameof(IsNewsSection))]
+    private int sectionIndex;
+
+    public bool IsTariffsSection => SectionIndex == 0;
+    public bool IsDevicesSection => SectionIndex == 1;
+    public bool IsFriendsSection => SectionIndex == 2;
+    public bool IsNewsSection => SectionIndex == 3;
+
+    /// <summary>Все новости — раздел «Новости» листает их сам (PagedItems).</summary>
+    public IReadOnlyList<NewsItem> AllNews => _allNews;
 
     [ObservableProperty] private string planName = "—";
     [ObservableProperty] private string expiryLabel = "—";
@@ -285,6 +313,10 @@ public sealed partial class PlansViewModel : ObservableObject
         _api = api;
         _subscription = subscription;
         _tokenStore = tokenStore;
+        // Превью-экземпляр: сразу нужный раздел (GODJI_UI_PREVIEW_PLANS=0..3) для сверки вёрстки.
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW") == "1" &&
+            int.TryParse(Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_PLANS"), out var previewSection))
+            sectionIndex = Math.Clamp(previewSection, 0, Sections.Count - 1);
     }
 
     public async Task LoadAsync()
@@ -664,6 +696,7 @@ public sealed partial class PlansViewModel : ObservableObject
     /// CollapsedNewsCount). Развёрнутый — постранично по NewsPageSize (см. IsNewsExpanded).</summary>
     private void RefreshVisibleNews()
     {
+        OnPropertyChanged(nameof(AllNews));
         VisibleNews.Clear();
         var page = IsNewsExpanded
             ? _allNews.Skip(NewsPageIndex * NewsPageSize).Take(NewsPageSize)
