@@ -168,6 +168,26 @@ public sealed partial class ServersViewModel : ObservableObject
         }
         Nodes.Clear();
         foreach (var item in Sorted(newNodes)) Nodes.Add(item);
+        if (Nodes.Count == 0 && Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_DEMO") == "1") FillPreviewDemo();
+    }
+
+    /// <summary>Только для превью-экземпляра (GODJI_UI_PREVIEW_DEMO=1): сверка вёрстки без подписки.</summary>
+    private void FillPreviewDemo()
+    {
+        (string Name, int Ping, bool Fav)[] demo =
+        {
+            ("🇳🇱 Нидерланды", 48, true), ("🇩🇪 Германия", 63, false), ("🇫🇮 Финляндия", 142, false),
+            ("🇹🇷 Турция", 311, false), ("🇺🇸 США", -1, false), ("🇰🇿 Казахстан", -2, false),
+            ("🇵🇱 Польша", 71, false), ("🇸🇪 Швеция", 88, true), ("🇫🇷 Франция", 95, false),
+            ("🇬🇧 Великобритания", 104, false), ("🇯🇵 Япония", 236, false), ("🇸🇬 Сингапур", 268, false),
+            ("🇦🇲 Армения", 57, false), ("🇷🇺 Россия LTE", 21, false)
+        };
+        for (var i = 0; i < demo.Length; i++)
+            Nodes.Add(new NodeItem
+            {
+                Node = new VlessNode { Id = $"demo-{i}", Name = demo[i].Name, Host = "demo", Port = 443, ConnectPayloadJson = "{}" },
+                IsSelected = i == 0, PingMs = demo[i].Ping, IsFavorite = demo[i].Fav
+            });
     }
 
     /// <summary>Сортировки стабильные: при равенстве остаётся порядок подписки. Избранные идут

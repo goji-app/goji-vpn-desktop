@@ -6,10 +6,16 @@
              xmlns:vm="clr-namespace:GodjiVpn.ViewModels">
     <!-- Серверы v5 «Стекло» — по эталону screens/*-servers.png и ServersScreen.kt: колонка
          padding 16, gap 12; все узлы — ОДНА карточка со строками через Hair. -->
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{DynamicResource BgBrush}">
-        <StackPanel Margin="16">
+    <!-- Без прокрутки: список узлов занимает оставшееся место и листается страницами. -->
+    <Grid Margin="16" Background="{DynamicResource BgBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-            <Grid Margin="4,0,4,0">
+            <Grid Grid.Row="0" Margin="4,0,4,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -49,11 +55,11 @@
             </Grid>
 
             <!-- Сортировка (Android 64aa106): тот же сегмент-контрол, что "Язык" в Настройках, ниже — 32. -->
-            <controls:SegmentedControl ItemsSource="{Binding SortOptions}" SelectedIndex="{Binding SortIndex}"
+            <controls:SegmentedControl Grid.Row="1" ItemsSource="{Binding SortOptions}" SelectedIndex="{Binding SortIndex}"
                                        ItemHeight="32" LabelFontSize="12" Margin="0,12,0,0"/>
 
             <!-- Баннер-результат ручного "Обновить": круг 24 с галочкой/!, текст 12, крестик 22. -->
-            <controls:GlassPanel CornerRadius="20" Padding="13,11" Margin="0,12,0,0"
+            <controls:GlassPanel Grid.Row="2" CornerRadius="20" Padding="13,11" Margin="0,12,0,0"
                                  Visibility="{Binding RefreshResultMessage, Converter={StaticResource NullToVisibilityConverter}}">
                 <controls:GlassPanel.Style>
                     <Style TargetType="controls:GlassPanel" BasedOn="{StaticResource GlassPill}">
@@ -109,12 +115,12 @@
             </controls:GlassPanel>
 
             <!-- Все узлы — одна карточка. -->
-            <controls:GlassPanel Style="{StaticResource GlassCard}" Margin="0,12,0,0">
-                <ItemsControl ItemsSource="{Binding Nodes}">
-                    <ItemsControl.ItemTemplate>
+            <controls:GlassPanel Grid.Row="3" Style="{StaticResource GlassCard}" Margin="0,12,0,0" VerticalAlignment="Top">
+                <controls:PagedItems ItemsSource="{Binding Nodes}">
+                    <controls:PagedItems.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:NodeItem}">
                             <StackPanel>
-                                <Rectangle x:Name="Divider" Style="{StaticResource Hair}"/>
+                                <Rectangle Style="{StaticResource PagedSep}"/>
                                 <Grid x:Name="Row" Background="Transparent">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -125,7 +131,7 @@
 
                                     <!-- Выбор узла: флаг 36 r12, имя 13.5 Bold, галочка у выбранного. -->
                                     <Button Style="{StaticResource BareButton}" controls:Press.Scale="1"
-                                            Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=controls:PagedItems}}"
                                             CommandParameter="{Binding}" Padding="14,12,0,12">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -154,7 +160,7 @@
 
                                     <!-- Избранное — в эталоне его нет, но это рабочая функция приложения. -->
                                     <Button Grid.Column="1" Style="{StaticResource BareButton}" Padding="6" Margin="4,0,0,0"
-                                            Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=controls:PagedItems}}"
                                             CommandParameter="{Binding}" VerticalAlignment="Center">
                                         <Path x:Name="Star" Data="{StaticResource IconStarOutline}" Style="{StaticResource Icon}" Width="15" Height="15"
                                               Fill="{DynamicResource TextMutedBrush}"/>
@@ -162,7 +168,7 @@
 
                                     <!-- Плашка пинга — отдельная кнопка: проверить только этот узел. -->
                                     <Button Grid.Column="2" Style="{StaticResource BareButton}" controls:Press.Scale="0.94" Margin="4,0,10,0"
-                                            Command="{Binding DataContext.PingOneCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            Command="{Binding DataContext.PingOneCommand, RelativeSource={RelativeSource AncestorType=controls:PagedItems}}"
                                             CommandParameter="{Binding}" VerticalAlignment="Center">
                                         <controls:GlassPanel Style="{StaticResource GlassFlat}" CornerRadius="999" MinWidth="70" Height="30" Padding="11,0">
                                             <TextBlock x:Name="Ping" Text="{Binding PingLabel}" FontWeight="Bold" FontSize="{s:Fs 11.5}"
@@ -173,16 +179,13 @@
                                     <!-- Узел, добавленный вручную по JSON — только у таких есть удаление. -->
                                     <Button Grid.Column="3" Style="{StaticResource BareButton}" Padding="4" Margin="0,0,10,0" VerticalAlignment="Center"
                                             Visibility="{Binding IsCustom, Converter={StaticResource BoolToVisibilityConverter}}"
-                                            Command="{Binding DataContext.RemoveCustomNodeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            Command="{Binding DataContext.RemoveCustomNodeCommand, RelativeSource={RelativeSource AncestorType=controls:PagedItems}}"
                                             CommandParameter="{Binding}">
                                         <Path Data="{StaticResource IconDelete}" Style="{StaticResource Icon}" Width="15" Height="15" Fill="{DynamicResource DangerBrush}"/>
                                     </Button>
                                 </Grid>
                             </StackPanel>
                             <DataTemplate.Triggers>
-                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}">
-                                    <Setter TargetName="Divider" Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                     <Setter TargetName="Row" Property="Background" Value="{DynamicResource SelBgBrush}"/>
                                     <Setter TargetName="FlagBox" Property="BorderBrush" Value="{DynamicResource TealBrush}"/>
@@ -203,10 +206,9 @@
                                 </DataTrigger>
                             </DataTemplate.Triggers>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    </controls:PagedItems.ItemTemplate>
+                </controls:PagedItems>
             </controls:GlassPanel>
 
-        </StackPanel>
-    </ScrollViewer>
+    </Grid>
 </UserControl>
