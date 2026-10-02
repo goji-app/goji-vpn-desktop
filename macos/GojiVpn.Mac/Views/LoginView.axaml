@@ -20,7 +20,6 @@
             </c:GlassPanel>
 
             <c:GlassPanel Grid.Row="2" Classes="strong" CornerRadius="32" Margin="0,12,0,0">
-                <ScrollViewer MaxHeight="560">
                     <StackPanel Margin="16,20,16,16">
                         <TextBlock Text="Привет. Куда&#10;подключаемся сегодня?" FontWeight="SemiBold" FontSize="{s:Fs 30}" LineHeight="33" TextWrapping="Wrap"/>
 
@@ -63,7 +62,6 @@
                             <TextBlock Classes="muted" FontSize="{s:Fs 11}" Text="."/>
                         </WrapPanel>
                     </StackPanel>
-                </ScrollViewer>
             </c:GlassPanel>
         </Grid>
 

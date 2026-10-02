@@ -15,9 +15,9 @@
         <Style Selector="Ellipse.state.connecting"><Setter Property="Fill" Value="{DynamicResource ConnectingDotBrush}"/></Style>
         <Style Selector="Ellipse.state.connected"><Setter Property="Fill" Value="{DynamicResource TealBrush}"/></Style>
     </UserControl.Styles>
-    <ScrollViewer>
-        <StackPanel Margin="16,14,16,8">
-            <Grid ZIndex="2">
+    <!-- Без прокрутки: глобус занимает оставшееся место и ужимается под остальное. -->
+    <Grid RowDefinitions="Auto,*,Auto" Margin="16,14,16,8">
+            <Grid Grid.Row="0" ZIndex="2">
                 <c:GlassPanel Classes="pill" HorizontalAlignment="Left" Padding="4,4,12,4">
                     <StackPanel Orientation="Horizontal">
                         <Border Width="28" Height="28" CornerRadius="14" Background="{DynamicResource InkBrush}">
@@ -35,9 +35,10 @@
                 </c:GlassPanel>
             </Grid>
 
-            <!-- Глобус: область 344, сам контрол шире и выше — вокруг сферы общий фон. -->
-            <Panel Height="344" Margin="0,12,0,0">
-                <c:Globe Height="430" VerticalAlignment="Top" Margin="-60,-44,-60,-42" RadiusFactor="0.4"
+            <!-- Глобус: всё оставшееся место (не меньше 120), сам контрол шире и выше — вокруг
+                 сферы общий фон. -->
+            <Panel Grid.Row="1" MinHeight="120" Margin="0,12,0,0">
+                <c:Globe Margin="-60,-44,-60,-42" RadiusFactor="0.4"
                          Status="{Binding GlobeStatus}"
                          NodeLat="{Binding GlobeGeo.Lat, FallbackValue=60.17}"
                          NodeLon="{Binding GlobeGeo.Lon, FallbackValue=24.94}"
@@ -52,6 +53,7 @@
                 </c:GlassPanel>
             </Panel>
 
+            <StackPanel Grid.Row="2">
             <c:PowerButton Margin="0,12,0,0" IsOn="{Binding IsConnected}" IsBusy="{Binding IsConnecting}" Command="{Binding ToggleCommand}"/>
 
             <TextBlock Text="{Binding Headline}" FontWeight="Bold" FontSize="{s:Fs 26}" TextAlignment="Center" HorizontalAlignment="Center"
@@ -131,6 +133,6 @@
                     </StackPanel>
                 </Button>
             </c:GlassPanel>
-        </StackPanel>
-    </ScrollViewer>
+            </StackPanel>
+    </Grid>
 </UserControl>
