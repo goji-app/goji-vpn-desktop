@@ -14,7 +14,7 @@
               Visibility="{Binding OtpSent, Converter={StaticResource InverseBoolToVisibilityConverter}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*" MinHeight="200"/>
+                <RowDefinition Height="*" MinHeight="110"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
@@ -32,8 +32,7 @@
             </controls:GlassPanel>
 
             <controls:GlassPanel Grid.Row="2" Style="{StaticResource GlassStrong}" CornerRadius="32" Margin="0,12,0,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="560">
-                    <StackPanel Margin="16,20,16,16">
+                <StackPanel Margin="16,20,16,16">
 
                         <TextBlock Text="Привет. Куда&#10;подключаемся сегодня?" FontWeight="SemiBold" FontSize="{s:Fs 30}"
                                    LineHeight="33" LineStackingStrategy="BlockLineHeight" TextWrapping="Wrap"
@@ -100,8 +99,7 @@
                             <Hyperlink Foreground="{DynamicResource TealDeepBrush}" TextDecorations="{x:Null}" Click="OnPrivacyClick"><Run Text="политикой конфиденциальности" FontWeight="SemiBold"/></Hyperlink>
                             <Run Text="."/>
                         </TextBlock>
-                    </StackPanel>
-                </ScrollViewer>
+                </StackPanel>
             </controls:GlassPanel>
         </Grid>
 
