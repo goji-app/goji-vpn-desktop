@@ -32,6 +32,10 @@ jobs:
       - name: Готовые части ядра
         run: sh Runtime/fetch.sh
 
+      - name: Карантин
+        if: always()
+        run: bash packaging/quarantine-test.sh
+
       - name: Туннель arm64
         run: bash packaging/tunnel-test.sh arm64
 
