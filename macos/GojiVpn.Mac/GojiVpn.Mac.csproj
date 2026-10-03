@@ -7,11 +7,17 @@
     <LangVersion>latest</LangVersion>
     <RootNamespace>GodjiVpn</RootNamespace>
     <AssemblyName>GojiVpn</AssemblyName>
-    <Version>1.0.71</Version>
+    <Version>1.0.72</Version>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest></ApplicationManifest>
     <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- Экономия памяти: без фонового (конкурентного) GC — нет лишнего потока и резерва под
+         него; ConserveMemory — сборщик охотнее уплотняет кучу вместо того, чтобы её растить. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
   </PropertyGroup>
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="5" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.22" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.22" />

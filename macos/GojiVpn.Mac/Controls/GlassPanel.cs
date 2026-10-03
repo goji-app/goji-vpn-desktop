@@ -12,46 +12,78 @@ public enum GlassLevel { Normal, Strong, Faint }
 public enum GlassShadow { None, Card, Strong, Pill }
 
 /// <summary>
-/// Общие "часы" анимаций стекла и фона: один таймер на всё приложение вместо анимации в
-/// каждом контроле. Подписчики перерисовываются по тику, пока находятся в визуальном дереве.
+/// Общие "часы" анимаций: один таймер (20 кадров/с) на всё приложение вместо анимации в
+/// каждом контроле. Раньше он без остановки перерисовывал вообще всё — фон, каждую стеклянную
+/// карточку, бейджи — и держал процессор занятым даже в простое. Теперь фон и стекло статичны,
+/// а таймер тикает только пока кому-то из AnimatedControl нужно движение: декоративные эффекты
+/// отыгрывают несколько циклов и замирают, глобус и спиннер крутятся, пока их видно. Когда
+/// двигаться некому, таймер останавливается совсем.
 /// </summary>
 internal static class GlassClock
 {
     public static readonly Stopwatch Time = Stopwatch.StartNew();
-    private static readonly HashSet<Control> Subscribers = new();
+    private static readonly HashSet<AnimatedControl> Subscribers = new();
     private static DispatcherTimer? _timer;
 
-    public static void Subscribe(Control c)
+    public static double Now => Time.Elapsed.TotalSeconds;
+
+    public static void Subscribe(AnimatedControl c)
     {
         Subscribers.Add(c);
-        if (_timer != null) return;
-        _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(50), DispatcherPriority.Render, (_, _) =>
+        Kick();
+    }
+
+    public static void Unsubscribe(AnimatedControl c) => Subscribers.Remove(c);
+
+    /// <summary>Запустить таймер, если он стоит (кому-то снова нужно движение).</summary>
+    public static void Kick()
+    {
+        if (_timer != null)
         {
-            foreach (var s in Subscribers) s.InvalidateVisual();
-        });
+            _timer.Interval = TimeSpan.FromMilliseconds(50);
+            return;
+        }
+        if (Subscribers.Count == 0) return;
+        _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(50), DispatcherPriority.Render, (_, _) => Tick());
         _timer.Start();
     }
 
-    public static void Unsubscribe(Control c)
+    private static void Tick()
     {
-        Subscribers.Remove(c);
-        if (Subscribers.Count > 0 || _timer == null) return;
-        _timer.Stop();
-        _timer = null;
+        if (_timer == null) return;
+        var alive = false;
+        var drawn = false;
+        foreach (var s in Subscribers.ToArray())
+        {
+            var state = s.OnClockTick();
+            alive |= state != ClockState.Done;
+            drawn |= state == ClockState.Drawn;
+        }
+        if (!alive)
+        {
+            _timer.Stop();
+            _timer = null;
+            return;
+        }
+        // Глобус есть, но сейчас не виден (другая вкладка, окно не в фокусе) — проверяем реже,
+        // чтобы и в таком простое процесс почти не просыпался.
+        _timer.Interval = TimeSpan.FromMilliseconds(drawn ? 50 : 250);
     }
+}
 
-    /// <summary>0→1→0 за 2·period секунд с плавным ускорением/замедлением (как CubicEase InOut).</summary>
-    public static double PingPong(double periodSeconds, double offsetSeconds = 0)
-    {
-        var t = (Time.Elapsed.TotalSeconds + offsetSeconds) % (periodSeconds * 2) / periodSeconds;
-        if (t > 1) t = 2 - t;
-        return t < 0.5 ? 4 * t * t * t : 1 - Math.Pow(-2 * t + 2, 3) / 2;
-    }
+internal enum ClockState
+{
+    /// <summary>Движение закончено — тики больше не нужны.</summary>
+    Done,
+    /// <summary>Ждёт (непрерывный контрол сейчас не виден).</summary>
+    Idle,
+    /// <summary>Кадр перерисован.</summary>
+    Drawn
 }
 
 /// <summary>
 /// Стеклянная поверхность дизайна v5 — порт GlassPanel Windows-клиента (а тот — CardStyle.kt
-/// Android). Снизу вверх внутри формы: тень → заливка по уровню → Tint → бегающий блик →
+/// Android). Снизу вверх внутри формы: тень → заливка по уровню → Tint → блик →
 /// диагональный глянец → внутренние тени сверху и снизу → контент → градиентная кромка 1px
 /// (+ акцентная обводка) отдельным слоем поверх контента. CornerRadius зажимается до половины
 /// меньшей стороны — 999 даёт капсулу/круг. Цвета рецепта выставляет стиль из Themes/Glass.axaml.
@@ -131,18 +163,6 @@ public class GlassPanel : Decorator, ICustomHitTest
         if (change.Property == AccentBorderProperty || change.Property.Name.StartsWith("Rim") ||
             change.Property == CornerRadiusProperty || change.Property == AccentColorProperty)
             _rim.InvalidateVisual();
-    }
-
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnAttachedToVisualTree(e);
-        GlassClock.Subscribe(this);
-    }
-
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnDetachedFromVisualTree(e);
-        GlassClock.Unsubscribe(this);
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -230,9 +250,10 @@ public class GlassPanel : Decorator, ICustomHitTest
 
         using (ctx.PushClip(shape))
         {
-            // Бегающий блик: x .15→.85, y .05→.30 ширины/высоты за 7 с туда-обратно.
-            var p = GlassClock.PingPong(7);
-            var center = new Point(size.Width * (0.15 + 0.7 * p), size.Height * (0.05 + 0.25 * p));
+            // Блик. В эталоне он гуляет x .15→.85, y .05→.30 за 7 с, здесь стоит неподвижно в
+            // верхней левой трети: блик есть на каждой карточке, и его движение заставляло
+            // перерисовывать все панели 20 раз в секунду (главная нагрузка в простое).
+            var center = new Point(size.Width * 0.32, size.Height * 0.11);
             var spot = new RadialGradientBrush
             {
                 GradientStops =

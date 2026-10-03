@@ -9,13 +9,65 @@ using Avalonia.Media;
 
 namespace GodjiVpn.Controls;
 
-/// <summary>Базовый контрол, перерисовывающийся по тику общих часов, пока он в дереве.</summary>
+/// <summary>
+/// Базовый контрол, перерисовывающийся по тику общих часов (GlassClock). Декоративные
+/// наследники двигаются MotionDuration секунд после появления/смены состояния (Restart) и
+/// замирают в конечном кадре; непрерывные (IsContinuous — глобус, спиннер) перерисовываются,
+/// пока их видно (ShouldRender).
+/// </summary>
 public abstract class AnimatedControl : Control
 {
+    private double _start;
+    private bool _finalDrawn = true;
+
+    /// <summary>Сколько секунд длится движение после Restart (декор — несколько циклов).</summary>
+    protected virtual double MotionDuration => 0;
+
+    /// <summary>Движение без конца, пока контрол виден (глобус, спиннер подключения).</summary>
+    protected virtual bool IsContinuous => false;
+
+    /// <summary>Нужно ли сейчас рисовать кадры непрерывного контрола.</summary>
+    protected virtual bool ShouldRender => IsEffectivelyVisible;
+
+    protected bool MotionDone => !IsContinuous && GlassClock.Now - _start >= MotionDuration;
+
+    /// <summary>Время анимации от последнего Restart; у декора упирается в MotionDuration.</summary>
+    protected double Seconds => IsContinuous ? GlassClock.Now - _start : Math.Min(GlassClock.Now - _start, MotionDuration);
+
+    public void Restart()
+    {
+        _start = GlassClock.Now;
+        _finalDrawn = false;
+        InvalidateVisual();
+        GlassClock.Kick();
+    }
+
+    internal ClockState OnClockTick()
+    {
+        if (IsContinuous)
+        {
+            if (!ShouldRender) return ClockState.Idle;
+            InvalidateVisual();
+            return ClockState.Drawn;
+        }
+        if (!MotionDone)
+        {
+            InvalidateVisual();
+            return ClockState.Drawn;
+        }
+        if (!_finalDrawn)
+        {
+            _finalDrawn = true;
+            InvalidateVisual();
+        }
+        return ClockState.Done;
+    }
+
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
         GlassClock.Subscribe(this);
+        Restart();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -29,8 +81,6 @@ public abstract class AnimatedControl : Control
 
     protected Color ResColor(string key, Color fallback) =>
         this.TryFindResource(key, ActualThemeVariant, out var v) && v is Color c ? c : fallback;
-
-    protected static double Seconds => GlassClock.Time.Elapsed.TotalSeconds;
 }
 
 /// <summary>
@@ -88,6 +138,7 @@ public class PowerButton : Panel
         _accent.IsVisible = IsOn;
         if (IsOn) _icon.Fill = Brushes.White;
         else _icon[!Avalonia.Controls.Shapes.Path.FillProperty] = new DynamicResourceExtension("TextPrimaryBrush");
+        _fx.Restart();
     }
 
     private sealed class Accent : AnimatedControl
@@ -107,6 +158,11 @@ public class PowerButton : Panel
 
         public Fx(PowerButton owner) => _owner = owner;
 
+        // Спиннер подключения крутится, пока идёт подключение; кольца вокруг включённой кнопки
+        // расходятся три раза после подключения и исчезают.
+        protected override bool IsContinuous => _owner.IsBusy && !_owner.IsOn;
+        protected override double MotionDuration => _owner.IsOn ? 2.4 * 3 + 1.2 : 0;
+
         public override void Render(DrawingContext ctx)
         {
             var c = new Point(Bounds.Width / 2, Bounds.Height / 2);
@@ -115,9 +171,11 @@ public class PowerButton : Panel
             {
                 ctx.DrawEllipse(Res("TealTintBrush", Brushes.Transparent), null, c, 48, 48);
                 var tealColor = ResColor("TealColor", Colors.Teal);
-                for (var i = 0; i < 2; i++)
+                for (var i = 0; i < 2 && !MotionDone; i++)
                 {
-                    var p = (Seconds / 2.4 + i * 0.5) % 1;
+                    var local = Seconds - i * 1.2;
+                    if (local < 0 || local >= 2.4 * 3) continue;
+                    var p = local / 2.4 % 1;
                     var eased = 1 - (1 - p) * (1 - p);
                     var r = 40 * (1 + 0.55 * eased);
                     var alpha = (byte)(0.5 * (1 - eased) * 255);
@@ -159,17 +217,28 @@ public class ShimmerBar : AnimatedControl
 
     public ShimmerBar() => Height = 8;
 
+    // Заливка догоняет значение, блик пробегает три раза — потом полоса статична до
+    // следующего изменения значения.
+    protected override double MotionDuration => 2.2 * 3;
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == ValueProperty) Restart();
+    }
+
     public override void Render(DrawingContext ctx)
     {
         var w = Bounds.Width;
         var h = Bounds.Height;
         if (w <= 0) return;
-        _shown += (Math.Clamp(Value, 0, 1) - _shown) * 0.2;
+        _shown = MotionDone ? Math.Clamp(Value, 0, 1) : _shown + (Math.Clamp(Value, 0, 1) - _shown) * 0.2;
         ctx.DrawRectangle(Res("TrackBgBrush", Brushes.LightGray), null, new RoundedRect(new Rect(0, 0, w, h), h / 2));
         var fw = w * _shown;
         if (fw < 1) return;
         var fill = new RoundedRect(new Rect(0, 0, Math.Max(fw, h), h), h / 2);
         ctx.DrawRectangle(Res("AccentGradientBrush", Brushes.Teal), null, fill);
+        if (MotionDone) return;
         using (ctx.PushClip(fill))
         {
             var x = (Seconds / 2.2 % 1) * (fw + 60) - 60;
@@ -297,6 +366,8 @@ public class ActiveBadge : Panel
 
     private sealed class Comet : AnimatedControl
     {
+        protected override double MotionDuration => 2.6 * 3;
+
         public override void Render(DrawingContext ctx)
         {
             var rect = new Rect(Bounds.Size);
@@ -327,11 +398,13 @@ public class ActiveBadge : Panel
             VerticalAlignment = VerticalAlignment.Center;
         }
 
+        protected override double MotionDuration => 1.6 * 3;
+
         public override void Render(DrawingContext ctx)
         {
             var c = new Point(3.5, 3.5);
             var teal = ResColor("TealColor", Colors.Teal);
-            var p = Seconds / 1.6 % 1;
+            var p = MotionDone ? 1 : Seconds / 1.6 % 1;
             ctx.DrawEllipse(new SolidColorBrush(Color.FromArgb((byte)(90 * (1 - p)), teal.R, teal.G, teal.B)), null, c, 3.5 + 3 * p, 3.5 + 3 * p);
             ctx.DrawEllipse(new SolidColorBrush(teal), null, c, 3.5, 3.5);
         }
@@ -384,6 +457,8 @@ public class HoloBadge : Panel
 
         public Shine(HoloBadge owner) => _owner = owner;
 
+        protected override double MotionDuration => 12;
+
         public override void Render(DrawingContext ctx)
         {
             var rect = new Rect(Bounds.Size);
@@ -399,6 +474,7 @@ public class HoloBadge : Panel
             for (var i = 0; i < colors.Length; i++) brush.GradientStops.Add(new GradientStop(colors[i], i / (double)(colors.Length - 1)));
             var shape = new RoundedRect(rect, rect.Height / 2);
             ctx.DrawRectangle(brush, null, shape);
+            if (MotionDone) return;
             using (ctx.PushClip(shape))
             {
                 var x = (Seconds / 3 % 1) * (rect.Width + 40) - 40;
@@ -423,11 +499,13 @@ public class SweepShine : AnimatedControl
 {
     public SweepShine() => IsHitTestVisible = false;
 
+    protected override double MotionDuration => 6 * 3;
+
     public override void Render(DrawingContext ctx)
     {
         var w = Bounds.Width;
         var h = Bounds.Height;
-        if (w <= 0 || h <= 0) return;
+        if (w <= 0 || h <= 0 || MotionDone) return;
         var t = Seconds % 6 / 2.2;
         if (t > 1) return;
         var band = w * 0.26;

@@ -6,7 +6,7 @@ namespace GodjiVpn.Controls;
 
 /// <summary>Индикатор загрузки 16px: дуга 270° цвета Foreground поверх дорожки TrackBg,
 /// вращается от общих часов (оборот за 0,9 с) — порт Spinner Windows-клиента.</summary>
-public class Spinner : Control
+public class Spinner : AnimatedControl
 {
     public static readonly StyledProperty<IBrush?> ForegroundProperty =
         AvaloniaProperty.Register<Spinner, IBrush?>(nameof(Foreground));
@@ -20,17 +20,7 @@ public class Spinner : Control
         IsHitTestVisible = false;
     }
 
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnAttachedToVisualTree(e);
-        GlassClock.Subscribe(this);
-    }
-
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnDetachedFromVisualTree(e);
-        GlassClock.Unsubscribe(this);
-    }
+    protected override bool IsContinuous => true;
 
     public override void Render(DrawingContext ctx)
     {
@@ -44,7 +34,7 @@ public class Spinner : Control
 
         var brush = Foreground ??
                     (this.TryFindResource("TealBrush", ActualThemeVariant, out var b) && b is IBrush teal ? teal : Brushes.Teal);
-        var start = GlassClock.Time.Elapsed.TotalSeconds / 0.9 * 360 % 360 - 90;
+        var start = Seconds / 0.9 * 360 % 360 - 90;
         Point P(double deg) => new(c + r * Math.Cos(deg * Math.PI / 180), c + r * Math.Sin(deg * Math.PI / 180));
         var geometry = new StreamGeometry();
         using (var g = geometry.Open())

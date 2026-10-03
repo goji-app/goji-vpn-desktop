@@ -32,6 +32,14 @@ public class Globe : AnimatedControl
 
     private const double HomeLat = 55.75, HomeLon = 37.62;
 
+    // Глобус крутится, только пока его видно и окно в фокусе: в свёрнутом/неактивном окне и на
+    // других вкладках он замирает (рисовать его каждый кадр — заметная нагрузка на процессор).
+    protected override bool IsContinuous => true;
+
+    protected override bool ShouldRender =>
+        IsEffectivelyVisible && Avalonia.Controls.TopLevel.GetTopLevel(this) is Avalonia.Controls.Window w &&
+        w.IsActive && w.WindowState != Avalonia.Controls.WindowState.Minimized;
+
     private sealed record Palette(Color Ocean, double OceanOp, Color Land, double LandOp, Color Grid, double GridOp,
         Color Hi, Color Arc, Color Home, Color Atmo);
 

@@ -7,35 +7,45 @@ namespace GodjiVpn.Controls;
 
 /// <summary>
 /// Общий фон дизайна v5 — порт GlassBackdrop Windows-клиента: вертикальный градиент, тонкие
-/// концентрические кольца, сетка точек и четыре медленно плавающих цветных пятна (при
-/// подключённом VPN первое пятно ярче). Рисуется целиком по тику GlassClock.
+/// концентрические кольца, сетка точек и четыре цветных пятна (при подключённом VPN первое
+/// пятно ярче). В эталоне пятна медленно плавают, здесь стоят в середине траектории: фон во
+/// всё окно, и его перерисовка 20 раз в секунду (вместе со всем, что над ним) держала процессор
+/// занятым в простое. Перерисовывается только при смене темы, размера и статуса VPN.
 /// </summary>
 public class GlassBackdrop : Control
 {
-    private sealed record BlobSpec(double Cx, double Cy, double R, double Dx, double Dy, double S0, double S1, double Seconds);
+    private sealed record BlobSpec(double Cx, double Cy, double R, double Dx, double Dy, double S0, double S1);
 
     private static readonly BlobSpec[] Blobs =
     {
-        new(56, 109, 180, 60, 40, 1, 1.18, 14),
-        new(345, 249, 160, -50, 70, 1.1, 0.9, 17),
-        new(129, 634, 170, 40, -60, 0.95, 1.15, 19),
-        new(356, 757, 150, 60, 40, 1, 1.18, 15),
+        new(56, 109, 180, 60, 40, 1, 1.18),
+        new(345, 249, 160, -50, 70, 1.1, 0.9),
+        new(129, 634, 170, 40, -60, 0.95, 1.15),
+        new(356, 757, 150, 60, 40, 1, 1.18),
     };
 
-    private double _blob1Boost;
-
-    public GlassBackdrop() => IsHitTestVisible = false;
+    public GlassBackdrop()
+    {
+        IsHitTestVisible = false;
+        ActualThemeVariantChanged += (_, _) => InvalidateVisual();
+    }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        GlassClock.Subscribe(this);
+        if (VpnEngine.Current != null) VpnEngine.Current.PropertyChanged += OnVpnChanged;
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
-        GlassClock.Unsubscribe(this);
+        if (VpnEngine.Current != null) VpnEngine.Current.PropertyChanged -= OnVpnChanged;
+    }
+
+    private void OnVpnChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(VpnEngine.IsRunning))
+            Avalonia.Threading.Dispatcher.UIThread.Post(InvalidateVisual);
     }
 
     private Color C(string key) =>
@@ -60,8 +70,7 @@ public class GlassBackdrop : Control
         }, null, new Rect(0, 0, w, h));
 
         var alpha = this.TryFindResource("BlobAlpha", ActualThemeVariant, out var a) && a is double d ? d : 0.6;
-        var target = VpnEngine.Current?.IsRunning == true ? 0.15 : 0;
-        _blob1Boost += (target - _blob1Boost) * 0.1;
+        var blob1Boost = VpnEngine.Current?.IsRunning == true ? 0.15 : 0;
 
         var kx = w / 412.0;
         var ky = h / 892.0;
@@ -70,7 +79,7 @@ public class GlassBackdrop : Control
         {
             var b = Blobs[i];
             var color = C($"Blob{i + 1}Color");
-            var t = GlassClock.PingPong(b.Seconds);
+            const double t = 0.5;
             var scale = b.S0 + (b.S1 - b.S0) * t;
             var radius = b.R * kx * scale;
             var outer = radius + feather;
@@ -78,7 +87,7 @@ public class GlassBackdrop : Control
             var center = new Point((b.Cx + b.Dx * t) * kx, (b.Cy + b.Dy * t) * ky);
             var brush = new RadialGradientBrush
             {
-                Opacity = Math.Min(1, alpha + (i == 0 ? _blob1Boost : 0)),
+                Opacity = Math.Min(1, alpha + (i == 0 ? blob1Boost : 0)),
                 GradientStops =
                 {
                     new GradientStop(color, 0),
