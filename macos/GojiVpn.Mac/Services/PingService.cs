@@ -1,7 +1,9 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text.Json.Nodes;
 using GodjiVpn.Models;
@@ -17,10 +19,23 @@ namespace GodjiVpn.Services;
 /// весь процесс. Здесь этого ограничения нет: каждый временный xray.exe — отдельный ОС-процесс
 /// со своей памятью, поэтому проверки узлов идут по-настоящему параллельно (ограничено только
 /// Concurrency ниже — чтобы не поднимать десятки процессов разом).
+///
+/// Конфиг узла для замера упрощается (см. BuildConfig): вся маршрутизация — сразу в прокси, без
+/// DNS-блока, geoip/geosite и балансировщиков профиля. С ними каждый замер грузил гео-базы и,
+/// главное, резолвил адрес самого сервера через DoH, который профиль отправляет… через этот же
+/// ещё не найденный сервер: замер упирался в таймаут и показывал «недоступен», хотя VPN работал.
 /// </summary>
 public sealed class PingService
 {
-    private static readonly SemaphoreSlim Concurrency = new(3);
+    // Каждый замер — отдельный лёгкий xray (без гео-баз ~20 МБ, старт ~0,3 с), поэтому полдюжины
+    // параллельно не нагружают систему, а «Проверить все» заканчивается в разы быстрее.
+    private static readonly SemaphoreSlim Concurrency = new(6);
+
+    // Адреса серверов резолвим сами (как и туннель, VpnEngine.WriteXrayConfigAsync) — на минуту,
+    // чтобы «Проверить все» по узлам одного хоста не спрашивал DNS заново.
+    private static readonly ConcurrentDictionary<string, (string Ip, DateTime Until)> ResolveCache = new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly string[] ProxyProtocols = { "vless", "vmess", "trojan", "shadowsocks", "hysteria", "hysteria2", "wireguard" };
 
     private static string RuntimeDir => Path.Combine(AppContext.BaseDirectory, "Runtime");
     private static string TempDir => Path.Combine(
@@ -76,7 +91,7 @@ public sealed class PingService
         Process? process = null;
         try
         {
-            File.WriteAllText(configPath, BuildConfig(node, port));
+            File.WriteAllText(configPath, await BuildConfigAsync(node, port).ConfigureAwait(false));
 
             var exePath = Path.Combine(RuntimeDir, "xray");
             if (!File.Exists(exePath)) return -1;
@@ -93,13 +108,14 @@ public sealed class PingService
             process = Process.Start(psi);
             if (process == null) return -1;
 
-            if (!await WaitForSocksReadyAsync(port, TimeSpan.FromSeconds(6), ct).ConfigureAwait(false))
+            if (!await WaitForSocksReadyAsync(port, TimeSpan.FromSeconds(4), ct).ConfigureAwait(false))
                 return -1;
 
             using var handler = new SocketsHttpHandler
             {
                 Proxy = new WebProxy($"socks5://127.0.0.1:{port}"),
-                UseProxy = true
+                UseProxy = true,
+                ConnectTimeout = TimeSpan.FromSeconds(4)
             };
             using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(5) };
             using var request = new HttpRequestMessage(
@@ -128,7 +144,7 @@ public sealed class PingService
         }
     }
 
-    private static string BuildConfig(VlessNode node, int socksPort)
+    private static async Task<string> BuildConfigAsync(VlessNode node, int socksPort)
     {
         var config = JsonNode.Parse(node.ConnectPayloadJson)!.AsObject();
         config["inbounds"] = new JsonArray(new JsonObject
@@ -143,21 +159,118 @@ public sealed class PingService
         // на каждый пинг.
         config["log"] = new JsonObject { ["loglevel"] = "none" };
 
+        var outbounds = config["outbounds"]?.AsArray() ?? new JsonArray();
+        var proxyTag = outbounds
+            .Where(ob => ProxyProtocols.Contains(ob?["protocol"]?.GetValue<string>()))
+            .Select(ob => ob?["tag"]?.GetValue<string>())
+            .FirstOrDefault(tag => !string.IsNullOrEmpty(tag));
+        if (proxyTag != null)
+        {
+            // Замер — это «дойдёт ли запрос через этот сервер и за сколько», поэтому всё из
+            // socks-инбаунда сразу в прокси. Правила профиля (geoip:ru → direct, DoH-серверы,
+            // балансировщики с observatory) здесь только мешают: грузят гео-базы, добавляют
+            // DNS-запросы через туннель и могли увести тестовый запрос мимо сервера.
+            config["routing"] = new JsonObject
+            {
+                ["domainStrategy"] = "AsIs",
+                ["rules"] = new JsonArray(new JsonObject
+                {
+                    ["type"] = "field",
+                    ["inboundTag"] = new JsonArray("socks-in"),
+                    ["outboundTag"] = proxyTag
+                })
+            };
+            config.Remove("dns");
+            config.Remove("fakedns");
+            config.Remove("observatory");
+            config.Remove("burstObservatory");
+        }
+
+        // Адрес сервера — сразу IP: иначе xray резолвит его по DNS-блоку профиля (DoH через
+        // этот же сервер — петля до таймаута) или, без DNS-блока, системным резолвером изнутри
+        // процесса уже после старта. Не получилось — оставляем имя, xray попробует сам.
+        foreach (var ob in outbounds)
+        {
+            if (!ProxyProtocols.Contains(ob?["protocol"]?.GetValue<string>())) continue;
+            var settings = ob!["settings"];
+            var targets = (settings?["vnext"] as JsonArray ?? settings?["servers"] as JsonArray)?.OfType<JsonObject>()
+                          ?? (settings is JsonObject so && so["address"] != null ? new[] { so } : Array.Empty<JsonObject>());
+            foreach (var target in targets)
+            {
+                var host = target["address"]?.GetValue<string>();
+                if (string.IsNullOrWhiteSpace(host) || IPAddress.TryParse(host, out _)) continue;
+                var ip = await ResolveAsync(host).ConfigureAwait(false);
+                if (ip != null) target["address"] = ip;
+            }
+        }
+
         // Пока туннель поднят, системный маршрут по умолчанию идёт в TUN — без привязки к
         // физическому интерфейсу замер шёл бы через текущий VPN-сервер ("через два сервера") и
         // показывал бы не задержку до узла, а сумму. sendThrough — тот же приём, что у самого
-        // туннеля (VpnEngine.WriteXrayConfigAsync).
-        var engine = VpnEngine.Current;
-        if (engine?.IsRunning == true && !string.IsNullOrEmpty(engine.PhysicalIp))
+        // туннеля (VpnEngine.WriteXrayConfigAsync). Адрес берём актуальный: запомненный при
+        // подключении мог смениться (переподключение Wi-Fi, другая сеть), и привязка к нему
+        // роняла каждый замер с "bind: The requested address is not valid" → «недоступен».
+        var physicalIp = CurrentPhysicalIp();
+        if (physicalIp != null)
         {
-            foreach (var ob in config["outbounds"]?.AsArray() ?? new JsonArray())
+            foreach (var ob in outbounds)
             {
                 var protocol = ob?["protocol"]?.GetValue<string>();
-                if (protocol is "vless" or "vmess" or "trojan" or "shadowsocks" or "hysteria" or "freedom")
-                    ob!["sendThrough"] = engine.PhysicalIp;
+                if (protocol == "freedom" || ProxyProtocols.Contains(protocol))
+                    ob!["sendThrough"] = physicalIp;
             }
         }
         return config.ToJsonString();
+    }
+
+    private static async Task<string?> ResolveAsync(string host)
+    {
+        if (ResolveCache.TryGetValue(host, out var cached) && cached.Until > DateTime.UtcNow) return cached.Ip;
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            var addresses = await Dns.GetHostAddressesAsync(host, AddressFamily.InterNetwork, cts.Token).ConfigureAwait(false);
+            var ip = addresses.FirstOrDefault()?.ToString();
+            if (ip != null) ResolveCache[host] = (ip, DateTime.UtcNow.AddMinutes(1));
+            return ip;
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Адрес физического интерфейса для sendThrough, пока поднят туннель; null — туннель
+    /// не поднят или физический адрес сейчас не найти (тогда замер идёт как есть, через туннель:
+    /// цифра выйдет чуть больше, но узел не будет ложно «недоступен»).</summary>
+    private static string? CurrentPhysicalIp()
+    {
+        var engine = VpnEngine.Current;
+        if (engine?.IsRunning != true || string.IsNullOrEmpty(engine.PhysicalIp)) return null;
+        try
+        {
+            var candidates = NetworkInterface.GetAllNetworkInterfaces()
+                .Where(ni => ni.OperationalStatus == OperationalStatus.Up &&
+                             ni.NetworkInterfaceType is not (NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel))
+                .Select(ni => (Props: ni.GetIPProperties(), Ni: ni))
+                .ToList();
+            var local = candidates
+                .SelectMany(c => c.Props.UnicastAddresses)
+                .Select(u => u.Address.ToString())
+                .ToHashSet();
+            // Адрес с момента подключения всё ещё наш — он и есть физический (так же его выбрал
+            // и сам туннель).
+            if (local.Contains(engine.PhysicalIp)) return engine.PhysicalIp;
+
+            // Иначе — IPv4 интерфейса со шлюзом по умолчанию, кроме нашего TUN-адаптера.
+            return candidates
+                .Where(c => c.Props.GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork &&
+                                                             !g.Address.Equals(IPAddress.Any)))
+                .SelectMany(c => c.Props.UnicastAddresses)
+                .Where(u => u.Address.AddressFamily == AddressFamily.InterNetwork &&
+                            !u.Address.ToString().StartsWith("172.19.0.") &&
+                            !u.Address.ToString().StartsWith("169.254."))
+                .Select(u => u.Address.ToString())
+                .FirstOrDefault();
+        }
+        catch { return null; }
     }
 
     private static async Task<bool> WaitForSocksReadyAsync(int port, TimeSpan timeout, CancellationToken ct)
