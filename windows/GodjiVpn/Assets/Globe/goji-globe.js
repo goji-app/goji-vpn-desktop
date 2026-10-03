@@ -72,6 +72,15 @@ class GojiGlobe extends HTMLElement {
     if (this._apply) this._apply();
   }
 
+  // Пауза рендера, пока глобус не виден (другая вкладка, свёрнутое окно, трей) — вызывается
+  // из C# (window.godjiSetPaused в globe.html). Без неё three.js рисовал 30–60 кадров в
+  // секунду в невидимый холст, а WPF ещё и перекладывал каждый кадр в своё окно.
+  setPaused(paused) {
+    this._paused = !!paused;
+    if (this._paused) { cancelAnimationFrame(this._raf); this._raf = 0; }
+    else if (!this._raf && this._loop) { this._last = 0; this._raf = requestAnimationFrame(this._loop); }
+  }
+
   disconnectedCallback() {
     cancelAnimationFrame(this._raf);
     this._ro && this._ro.disconnect();
@@ -395,8 +404,20 @@ class GojiGlobe extends HTMLElement {
       lastW = s.w; lastH = s.h;
       camera.aspect = s.w / s.h; camera.updateProjectionMatrix(); renderer.setSize(s.w, s.h);
     };
-    const loop = () => {
+    // Не чаще ~24 кадров в секунду: глобусу хватает, а нагрузка на процессор (и рендер
+    // WebView2, и перенос каждого кадра в окно WPF) в 2,5 раза ниже, чем на 60 Гц. Всё движение ниже
+    // рассчитано на шаг 16 мс, поэтому за один показанный кадр делаем столько шагов, сколько
+    // их прошло (обычно два) — скорость вращения и пульсаций остаётся прежней.
+    const loop = (now) => {
       this._raf = requestAnimationFrame(loop);
+      if (this._last && now - this._last < 40) return;
+      const steps = this._last ? Math.min(5, Math.max(1, Math.round((now - this._last) / 16.7))) : 1;
+      this._last = now;
+      for (let i = 0; i < steps; i++) step();
+      renderer.render(scene, camera);
+    };
+    this._loop = loop;
+    const step = () => {
       if ((frame++ % 10) === 0) fit();
       t += 0.016;
       const on = status === 'on', connecting = status === 'connecting';
@@ -465,10 +486,11 @@ class GojiGlobe extends HTMLElement {
         o.sat.rotation.y = -o.a;
         o.blink.material.opacity = Math.sin(t * 5 + o.ph) > 0.6 ? 1 : 0.15;
       });
-      renderer.render(scene, camera);
     };
     globe.updateMatrixWorld();
-    loop();
+    step();
+    renderer.render(scene, camera);
+    if (!this._paused) this._raf = requestAnimationFrame(loop);
 
     const resize = () => fit();
     resize();

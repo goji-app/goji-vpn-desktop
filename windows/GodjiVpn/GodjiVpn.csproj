@@ -18,9 +18,17 @@
     <Platforms>x64</Platforms>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
-    <Version>1.0.71</Version>
+    <Version>1.0.72</Version>
     <ApplicationIcon>Assets\Images\app.ico</ApplicationIcon>
+    <!-- Экономия памяти: без фонового (конкурентного) GC — нет лишнего потока и резерва под
+         него; ConserveMemory — сборщик охотнее уплотняет кучу вместо того, чтобы её растить.
+         Для UI-клиента с небольшой кучей разницы в отзывчивости не видно. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
   </PropertyGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="5" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />

@@ -1,3 +1,4 @@
+using GodjiVpn.Utils;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -152,8 +153,8 @@ public class PowerButton : UserControl
                 var begin = TimeSpan.FromMilliseconds(i * 1200);
                 var duration = TimeSpan.FromMilliseconds(2400);
                 var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
-                var grow = new DoubleAnimation(1, 1.55, duration) { BeginTime = begin, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = ease };
-                var fade = new DoubleAnimation(0.5, 0, duration) { BeginTime = begin, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = ease };
+                var grow = new DoubleAnimation(1, 1.55, duration) { BeginTime = begin, RepeatBehavior = Motion.Decor, EasingFunction = ease };
+                var fade = new DoubleAnimation(0.5, 0, duration) { BeginTime = begin, RepeatBehavior = Motion.Decor, EasingFunction = ease };
                 Timeline.SetDesiredFrameRate(grow, 30);
                 Timeline.SetDesiredFrameRate(fade, 30);
                 scale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);

@@ -29,6 +29,11 @@
       document.getElementById('globe').setAttribute('node', 'dynamic');
       document.getElementById('globe').setNode({ lat, lon, country, city, title });
     };
+    window.godjiSetPaused = function (paused) {
+      const g = document.getElementById('globe');
+      g._paused = !!paused;
+      if (g.setPaused) g.setPaused(paused);
+    };
     window.godjiSetTheme = function (theme) {
       document.getElementById('globe').setAttribute('theme', theme);
     };

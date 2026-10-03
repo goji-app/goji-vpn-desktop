@@ -57,8 +57,8 @@ public class ActiveBadge : UserControl
         dot.Children.Add(solid);
 
         var pingDuration = new Duration(TimeSpan.FromMilliseconds(1600));
-        var scaleAnim = new DoubleAnimation(1, 2.8, pingDuration) { RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
-        var fadeAnim = new DoubleAnimation(0.75, 0, pingDuration) { RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
+        var scaleAnim = new DoubleAnimation(1, 2.8, pingDuration) { RepeatBehavior = Motion.Decor, EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
+        var fadeAnim = new DoubleAnimation(0.75, 0, pingDuration) { RepeatBehavior = Motion.Decor, EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
         Timeline.SetDesiredFrameRate(scaleAnim, 30);
         Timeline.SetDesiredFrameRate(fadeAnim, 30);
         pingScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnim);
@@ -78,7 +78,7 @@ public class ActiveBadge : UserControl
         _outer.Children.Add(core);
         Content = _outer;
 
-        var spin = new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(2800)) { RepeatBehavior = RepeatBehavior.Forever };
+        var spin = new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(2800)) { RepeatBehavior = Motion.Decor };
         Timeline.SetDesiredFrameRate(spin, 30);
         _cometRotate.BeginAnimation(RotateTransform.AngleProperty, spin);
     }
@@ -188,7 +188,7 @@ public class HoloBadge : UserControl
             var w = grid.ActualWidth;
             var sweep = new DoubleAnimation(-0.4 * w - 10, 1.6 * w - 10, TimeSpan.FromMilliseconds(3000))
             {
-                RepeatBehavior = RepeatBehavior.Forever,
+                RepeatBehavior = Motion.Decor,
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
             };
             Timeline.SetDesiredFrameRate(sweep, 30);
@@ -210,7 +210,7 @@ public class HoloBadge : UserControl
             Transform = _holoX
         };
         _body.Background = brush;
-        var shift = new DoubleAnimation(0, -width, TimeSpan.FromMilliseconds(5000)) { RepeatBehavior = RepeatBehavior.Forever };
+        var shift = new DoubleAnimation(0, -width, TimeSpan.FromMilliseconds(5000)) { RepeatBehavior = Motion.Decor };
         Timeline.SetDesiredFrameRate(shift, 30);
         _holoX.BeginAnimation(TranslateTransform.XProperty, shift);
     }

@@ -1,3 +1,4 @@
+using GodjiVpn.Utils;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
@@ -61,7 +62,7 @@ public partial class TrafficBar : UserControl
             var travel = targetWidth + Shimmer.Width;
             var shimmerAnim = new DoubleAnimation(-Shimmer.Width, travel, TimeSpan.FromMilliseconds(1800))
             {
-                RepeatBehavior = RepeatBehavior.Forever
+                RepeatBehavior = Motion.Decor
             };
             ShimmerTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, shimmerAnim);
         }

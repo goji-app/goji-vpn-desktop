@@ -1,3 +1,4 @@
+using GodjiVpn.Utils;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -68,7 +69,7 @@ public class ShimmerBar : UserControl
 
         var shine = Math.Max(4, target * 0.4);
         _shine.Width = shine;
-        var anim = new DoubleAnimation(-shine, shine * 3, TimeSpan.FromMilliseconds(1800)) { RepeatBehavior = RepeatBehavior.Forever };
+        var anim = new DoubleAnimation(-shine, shine * 3, TimeSpan.FromMilliseconds(1800)) { RepeatBehavior = Motion.Decor };
         Timeline.SetDesiredFrameRate(anim, 30);
         _shineX.BeginAnimation(TranslateTransform.XProperty, target > 0 ? anim : null);
     }

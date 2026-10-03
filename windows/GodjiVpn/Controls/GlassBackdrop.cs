@@ -13,22 +13,25 @@ namespace GodjiVpn.Controls;
 ///  1. Вертикальный градиент BaseTop → BaseMid (55%) → BaseBottom.
 ///  2. Концентрические кольца: центр (78% w, 18% h), шаг 27, линия 1, TexLine.
 ///  3. Сетка точек: шаг 16, радиус 1, TexDot.
-///  4. Четыре больших размытых пятна Blob1..4 (альфа BlobAlpha), медленно дрейфуют 14–19 с.
+///  4. Четыре больших размытых пятна Blob1..4 (альфа BlobAlpha). В эталоне они медленно
+///     дрейфуют (14–19 с), но здесь стоят на месте: пятна во весь экран, и любое их движение
+///     заставляло WPF перерисовывать всё окно со всеми стеклянными карточками 30 раз в секунду
+///     (заметная нагрузка на процессор в простое). Ставим их в середину траектории дрейфа.
 /// Координаты пятен заданы для экрана 412×892 и масштабируются под реальный размер.
 /// Без этого фона стеклянные карточки выглядят просто серыми плашками — "стекло" получается
 /// именно слоями поверх мягкого пёстрого фона.
 /// </summary>
 public class GlassBackdrop : Grid
 {
-    private sealed record BlobSpec(double Cx, double Cy, double R, double Dx, double Dy, double S0, double S1, int Ms);
+    private sealed record BlobSpec(double Cx, double Cy, double R, double Dx, double Dy, double S0, double S1);
 
-    // cx/cy/r — для макета 412×892; dx/dy — амплитуда дрейфа; s0→s1 — масштаб.
+    // cx/cy/r — для макета 412×892; dx/dy — амплитуда дрейфа эталона; s0→s1 — масштаб.
     private static readonly BlobSpec[] Blobs =
     {
-        new(56, 109, 180, 60, 40, 1, 1.18, 14000),
-        new(345, 249, 160, -50, 70, 1.1, 0.9, 17000),
-        new(129, 634, 170, 40, -60, 0.95, 1.15, 19000),
-        new(356, 757, 150, 60, 40, 1, 1.18, 15000),
+        new(56, 109, 180, 60, 40, 1, 1.18),
+        new(345, 249, 160, -50, 70, 1.1, 0.9),
+        new(129, 634, 170, 40, -60, 0.95, 1.15),
+        new(356, 757, 150, 60, 40, 1, 1.18),
     };
 
     private readonly Texture _texture = new();
@@ -140,26 +143,17 @@ public class GlassBackdrop : Grid
             Canvas.SetLeft(e, -outer);
             Canvas.SetTop(e, -outer);
 
-            var scale = new ScaleTransform(b.S0, b.S0);
-            var move = new TranslateTransform(b.Cx * kx, b.Cy * ky);
-            e.RenderTransform = new TransformGroup { Children = { scale, move } };
-
-            var duration = new Duration(TimeSpan.FromMilliseconds(b.Ms));
-            AnimationTimeline Anim(double from, double to)
+            var s = (b.S0 + b.S1) / 2;
+            var transform = new TransformGroup
             {
-                var a = new DoubleAnimation(from, to, duration)
+                Children =
                 {
-                    AutoReverse = true,
-                    RepeatBehavior = RepeatBehavior.Forever,
-                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
-                };
-                Timeline.SetDesiredFrameRate(a, 30);
-                return a;
-            }
-            move.BeginAnimation(TranslateTransform.XProperty, Anim(b.Cx * kx, (b.Cx + b.Dx) * kx));
-            move.BeginAnimation(TranslateTransform.YProperty, Anim(b.Cy * ky, (b.Cy + b.Dy) * ky));
-            scale.BeginAnimation(ScaleTransform.ScaleXProperty, Anim(b.S0, b.S1));
-            scale.BeginAnimation(ScaleTransform.ScaleYProperty, Anim(b.S0, b.S1));
+                    new ScaleTransform(s, s),
+                    new TranslateTransform((b.Cx + b.Dx / 2) * kx, (b.Cy + b.Dy / 2) * ky)
+                }
+            };
+            transform.Freeze();
+            e.RenderTransform = transform;
         }
         ApplyBlobOpacity(animate: false);
     }

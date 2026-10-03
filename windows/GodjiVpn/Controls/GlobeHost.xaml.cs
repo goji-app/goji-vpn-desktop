@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows;
 using System.Windows.Controls;
 using GodjiVpn.Services;
 using Microsoft.Web.WebView2.Core;
@@ -22,6 +23,8 @@ public partial class GlobeHost : UserControl
     private bool _ready;
     private bool _disposed;
     private readonly Queue<Func<Task>> _pending = new();
+    private Window? _window;
+    private bool? _sentPaused;
 
     /// <summary>Спутники на орбитах — только экран входа (satellites="on" в эталоне).
     /// Задаётся в XAML до загрузки: компонент читает его один раз при старте.</summary>
@@ -30,7 +33,26 @@ public partial class GlobeHost : UserControl
     public GlobeHost()
     {
         InitializeComponent();
-        Loaded += async (_, _) => await InitializeAsync();
+        Loaded += async (_, _) =>
+        {
+            _window = Window.GetWindow(this);
+            if (_window != null)
+            {
+                _window.StateChanged += OnWindowStateChanged;
+                _window.Activated += OnWindowStateChanged;
+                _window.Deactivated += OnWindowStateChanged;
+            }
+            UpdatePaused();
+            await InitializeAsync();
+        };
+        // Глобус рисуется, только пока его видно: ShellView держит все вкладки живыми и лишь
+        // скрывает неактивные, окно может быть свёрнуто или убрано в трей — во всех этих
+        // случаях three.js продолжал рендерить 60 кадров в секунду в никуда (десятки процентов
+        // ядра в простое). Ещё глобус замирает, пока окно не в фокусе: каждый его кадр WPF
+        // копирует из WebView2 в своё окно (WebView2CompositionControl), и даже на 24 кадрах
+        // это заметная доля ядра — тратить её, пока пользователь работает в другой программе,
+        // ради фоновой декорации незачем.
+        IsVisibleChanged += (_, _) => UpdatePaused();
         // MainWindow меняет CurrentViewModel между LoginViewModel/ShellViewModel через implicit
         // DataTemplate (см. App.xaml) — при каждом входе/выходе из аккаунта WPF полностью
         // пересобирает визуальное дерево, а значит и этот GlobeHost со своим WebView2 создаётся
@@ -48,6 +70,13 @@ public partial class GlobeHost : UserControl
             // тихо остановилось, а не обращалось к освобождённому Web.
             _disposed = true;
             _pending.Clear();
+            if (_window != null)
+            {
+                _window.StateChanged -= OnWindowStateChanged;
+                _window.Activated -= OnWindowStateChanged;
+                _window.Deactivated -= OnWindowStateChanged;
+            }
+            _window = null;
             if (ThemeService.Current != null) ThemeService.Current.Changed -= OnThemeChanged;
             Web.Dispose();
         };
@@ -93,6 +122,28 @@ public partial class GlobeHost : UserControl
             // было бы особенно обидно, учитывая, что GlobeHost встроен и в LoginView, то есть
             // сработало бы на самом первом экране, который видит пользователь).
             App.LogUnhandledException(ex);
+        }
+    }
+
+    private void OnWindowStateChanged(object? sender, EventArgs e) => UpdatePaused();
+
+    private void UpdatePaused()
+    {
+        if (_disposed) return;
+        var paused = !IsVisible || _window == null || _window.WindowState == WindowState.Minimized || !_window.IsActive;
+        if (_sentPaused == paused) return;
+        _sentPaused = paused;
+        _ = RunAsync($"window.godjiSetPaused && window.godjiSetPaused({(paused ? "true" : "false")})");
+        // Пока глобус не виден, просим WebView2 держать поменьше памяти (кэши, GPU-ресурсы).
+        if (_ready)
+        {
+            try
+            {
+                Web.CoreWebView2.MemoryUsageTargetLevel = paused
+                    ? CoreWebView2MemoryUsageTargetLevel.Low
+                    : CoreWebView2MemoryUsageTargetLevel.Normal;
+            }
+            catch { /* старый WebView2 Runtime — не критично */ }
         }
     }
 

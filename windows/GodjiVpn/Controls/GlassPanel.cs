@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -25,9 +24,6 @@ public enum GlassShadow { None, Card, Strong, Pill }
 /// </summary>
 public class GlassPanel : Decorator
 {
-    private static readonly Stopwatch Clock = Stopwatch.StartNew();
-    private static readonly Duration LightPeriod = new(TimeSpan.FromSeconds(7));
-
     private readonly DrawingVisual _overlay = new();
 
     public GlassPanel()
@@ -210,10 +206,10 @@ public class GlassPanel : Decorator
 
         dc.PushClip(shape);
 
-        // Бегающий блик — источник света медленно гуляет по всем стеклянным поверхностям
-        // (LocalGlassLight в Android): x .15→.85, y .05→.30 за 7 с туда-обратно. Анимация
-        // висит на самой кисти — перерисовки OnRender на каждый кадр не нужно. Фаза берётся от
-        // общих часов, чтобы блики разных карточек двигались синхронно, как в Android.
+        // Блик — источник света на стеклянной поверхности (LocalGlassLight в Android). В эталоне
+        // он гуляет x .15→.85, y .05→.30 за 7 с, но здесь стоит неподвижно в верхней левой
+        // трети: блик есть на каждой карточке, и его движение держало рендер WPF активным,
+        // перерисовывая все панели 30 раз в секунду (основная нагрузка на процессор в простое).
         var spot = new RadialGradientBrush
         {
             MappingMode = BrushMappingMode.Absolute,
@@ -225,21 +221,10 @@ public class GlassPanel : Decorator
                 new GradientStop(WithAlpha(SpotColor, 0), 1)
             }
         };
-        var from = new Point(size.Width * 0.15, size.Height * 0.05);
-        var to = new Point(size.Width * 0.85, size.Height * 0.30);
-        var phase = TimeSpan.FromTicks(Clock.Elapsed.Ticks % (LightPeriod.TimeSpan.Ticks * 2));
-        var anim = new PointAnimation(from, to, LightPeriod)
-        {
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
-            BeginTime = -phase
-        };
-        Timeline.SetDesiredFrameRate(anim, 30);
-        spot.Center = from;
-        spot.GradientOrigin = from;
-        spot.BeginAnimation(RadialGradientBrush.CenterProperty, anim);
-        spot.BeginAnimation(RadialGradientBrush.GradientOriginProperty, anim);
+        var light = new Point(size.Width * 0.32, size.Height * 0.11);
+        spot.Center = light;
+        spot.GradientOrigin = light;
+        spot.Freeze();
         dc.DrawRectangle(spot, null, rect);
 
         // Диагональный глянец → прозрачный к 45%.

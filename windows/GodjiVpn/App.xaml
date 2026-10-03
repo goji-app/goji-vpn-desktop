@@ -354,7 +354,7 @@
                     <Trigger Property="Tag" Value="pulse">
                         <Trigger.EnterActions>
                             <BeginStoryboard>
-                                <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                <Storyboard RepeatBehavior="4x" AutoReverse="True">
                                     <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0.35" Duration="0:0:0.9"/>
                                 </Storyboard>
                             </BeginStoryboard>

@@ -27,6 +27,10 @@ public sealed partial class ShellViewModel : ObservableObject
         Connect.NavigateToPlansRequested += () => SelectedTabIndex = 2;
         Connect.NavigateToServersRequested += () => SelectedTabIndex = 1;
         Servers.ServerPicked += () => SelectedTabIndex = 0;
+        // Превью-экземпляр (сверка вёрстки, замеры): открыть сразу нужную вкладку.
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW") == "1" &&
+            int.TryParse(Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_TAB"), out var previewTab))
+            SelectedTabIndex = previewTab;
     }
 
     /// <summary>Вызывается один раз при старте приложения (см. MainViewModel.InitializeAsync)

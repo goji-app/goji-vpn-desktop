@@ -1,3 +1,4 @@
+using GodjiVpn.Utils;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -38,7 +39,7 @@ public class SweepShine : Canvas
         _band.Width = w;
         _band.Height = h;
         SetTop(_band, -ActualHeight * 0.4);
-        var anim = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromSeconds(6), RepeatBehavior = RepeatBehavior.Forever };
+        var anim = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromSeconds(6), RepeatBehavior = Motion.Decor };
         anim.KeyFrames.Add(new DiscreteDoubleKeyFrame(-1.6 * w, KeyTime.FromTimeSpan(TimeSpan.Zero)));
         anim.KeyFrames.Add(new EasingDoubleKeyFrame(4.2 * w, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(3300)),
             new CubicEase { EasingMode = EasingMode.EaseInOut }));
