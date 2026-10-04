@@ -18,7 +18,7 @@ namespace GodjiVpn.Services;
 public sealed class ApiClient
 {
     private const string BaseUrl = "https://gojihub.xyz/";
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = Utils.LenientJson.Options();
 
     private readonly HttpClient _http;
     // Запасной путь БЕЗ прокси — см. SendWithRefreshAsync: если запрос через туннель падает на
