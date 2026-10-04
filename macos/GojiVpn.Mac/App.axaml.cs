@@ -64,6 +64,7 @@ public partial class App : Application
         var settingsViewModel = new SettingsViewModel(tokenStore, vpnEngine, hwidProvider, pingSettings, themeService, updateService, apiClient, appSettings);
         var shellViewModel = new ShellViewModel(connectViewModel, serversViewModel, plansViewModel, settingsViewModel);
         var mainViewModel = new MainViewModel(tokenStore, loginViewModel, shellViewModel);
+        apiClient.SessionExpired += () => Dispatcher.UIThread.Post(mainViewModel.HandleSessionExpired);
 
         var window = new MainWindow { DataContext = mainViewModel };
         desktop.MainWindow = window;
