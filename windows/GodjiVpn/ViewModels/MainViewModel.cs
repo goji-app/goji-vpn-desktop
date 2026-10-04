@@ -53,6 +53,19 @@ public sealed partial class MainViewModel : ObservableObject
         await _shell.LoadAsync();
     }
 
+    /// <summary>Сессия кабинета истекла и не продлилась (ApiClient.SessionExpired) — на экран
+    /// входа с объяснением. VPN не трогаем: туннель от сессии кабинета не зависит, и обрывать
+    /// работающее соединение из-за этого незачем. В превью-экземпляре — ничего: он не должен
+    /// стирать настоящую сохранённую сессию.</summary>
+    public void HandleSessionExpired()
+    {
+        if (CurrentViewModel != _shell || Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW") == "1") return;
+        _tokenStore.Clear();
+        _login.Reset();
+        _login.ErrorMessage = "Сессия истекла — войдите снова. VPN при этом продолжает работать.";
+        CurrentViewModel = _login;
+    }
+
     private void OnLoggedOut()
     {
         // LoginViewModel — один и тот же экземпляр на всё время жизни процесса (не

@@ -242,8 +242,28 @@ public sealed class ApiClient
     /// продлить сессию через POST api/auth/refresh по rw_refresh_token и повторяем запрос ОДИН
     /// раз с уже новым токеном. requestFactory — не HttpRequestMessage напрямую (его нельзя
     /// переиспользовать повторно после отправки), а фабрика, пересобирающая тот же запрос.</summary>
+    /// <summary>Сессия кабинета кончилась и продлить её не удалось: запрос вернул 401, а
+    /// refresh-токена нет или он тоже отвергнут. Раньше такое проходило молча — серверы
+    /// продолжали подтягиваться по запасной ссылке, а тариф, срок и трафик просто пропадали
+    /// (жалоба пользователя «не подтягивается подписка», помог только выход и вход заново).
+    /// Подписчик (App) переводит приложение на экран входа.</summary>
+    public event Action? SessionExpired;
+
+    // Продление сессии — строго по одному: при старте несколько запросов уходят параллельно и
+    // могут разом получить 401. Если бэкенд ротирует refresh-токен, второе продление старым
+    // токеном было бы отвергнуто и ложно выкинуло бы пользователя на экран входа.
+    private readonly SemaphoreSlim _refreshLock = new(1, 1);
+
+    private void RaiseSessionExpired()
+    {
+        // Без токена 401 — норма (пользователь уже вышел), это не «истекла сессия».
+        if (string.IsNullOrEmpty(_tokenStore.AccessToken)) return;
+        SessionExpired?.Invoke();
+    }
+
     private async Task<HttpResponseMessage> SendWithRefreshAsync(Func<HttpRequestMessage> requestFactory, CancellationToken ct)
     {
+        var sentToken = _tokenStore.AccessToken;
         var response = await SendWithDirectFallbackAsync(requestFactory, ct).ConfigureAwait(false);
 
         // RequestUri здесь ещё относительный (например "api/subscriptions") — HttpClient
@@ -253,14 +273,31 @@ public sealed class ApiClient
         // относительный путь как есть, этого достаточно для проверки префикса.
         bool isAuthEndpoint;
         using (var probe = requestFactory()) isAuthEndpoint = probe.RequestUri!.OriginalString.Contains("api/auth/", StringComparison.Ordinal);
-        if (response.StatusCode != HttpStatusCode.Unauthorized || isAuthEndpoint || _tokenStore.RefreshToken is not { } refreshToken)
+        if (response.StatusCode != HttpStatusCode.Unauthorized || isAuthEndpoint)
             return response;
 
-        if (!await RefreshSessionAsync(refreshToken, ct).ConfigureAwait(false))
+        bool refreshed;
+        await _refreshLock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            // Пока ждали своей очереди, сессию уже продлил параллельный запрос — просто повторяем.
+            refreshed = _tokenStore.AccessToken != sentToken ||
+                        (_tokenStore.RefreshToken is { } refreshToken && await RefreshSessionAsync(refreshToken, ct).ConfigureAwait(false));
+        }
+        finally
+        {
+            _refreshLock.Release();
+        }
+        if (!refreshed)
+        {
+            RaiseSessionExpired();
             return response; // не получилось обновить — отдаём исходный 401 как есть
+        }
 
         response.Dispose();
-        return await SendWithDirectFallbackAsync(requestFactory, ct).ConfigureAwait(false); // подхватит уже обновлённый _tokenStore.AccessToken
+        var retried = await SendWithDirectFallbackAsync(requestFactory, ct).ConfigureAwait(false); // подхватит уже обновлённый _tokenStore.AccessToken
+        if (retried.StatusCode == HttpStatusCode.Unauthorized) RaiseSessionExpired();
+        return retried;
     }
 
     /// <summary>Порт "secondary fallback in tunnelAwareProxySelector" из Android
