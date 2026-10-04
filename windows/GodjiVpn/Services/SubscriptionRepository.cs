@@ -135,7 +135,10 @@ public sealed class SubscriptionRepository : INotifyPropertyChanged
                 return false;
             }
 
-            LastError = null;
+            // Серверы обновились по запасной ссылке, но тариф, срок и трафик из личного кабинета —
+            // нет. Раньше это проходило молча: вкладка «Подписка» просто оставалась пустой, и
+            // понять, что не так, было невозможно. Теперь причина видна.
+            LastError = "Данные личного кабинета не загрузились: " + Shorten(ex.Message);
             _subscriptionNodes = cachedNodes;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Nodes)));
             if (SelectedId == null || Nodes.All(n => n.Id != SelectedId))
@@ -198,6 +201,12 @@ public sealed class SubscriptionRepository : INotifyPropertyChanged
     }
 
     public void Select(string id) => SelectedId = id;
+
+    private static string Shorten(string message)
+    {
+        var oneLine = message.ReplaceLineEndings(" ");
+        return oneLine.Length <= 160 ? oneLine : oneLine[..160] + "…";
+    }
 
     private async Task<(List<VlessNode> Nodes, string? Error)> SafeFetchNodesAsync(string subscriptionLink)
     {
