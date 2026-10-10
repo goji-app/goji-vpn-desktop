@@ -44,7 +44,7 @@ public sealed class BypassDomainItem
 
 /// <summary>Подэкраны Настроек — в Android это отдельные маршруты навигации
 /// (PingSettingsScreen, LogViewerDialog); здесь — подмена содержимого вкладки.</summary>
-public enum SettingsPage { Main, Appearance, Connection, Security, Updates, About, Ping, Log, Bypass }
+public enum SettingsPage { Main, Appearance, Connection, Security, Updates, About, Ping, Log, Bypass, Journal }
 
 /// <summary>Аналог SettingsScreen.kt — версия/HWID (About), просмотр логов вместо отдельного
 /// LogViewerDialog.kt (здесь один экран проще нескольких диалогов на маленьком приложении),
@@ -134,13 +134,18 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         if (LeakChecking) return;
         LeakChecking = true;
-        try { LeakReport = await _diagnostics.CheckAsync(); }
+        try
+        {
+            LeakReport = await _diagnostics.CheckAsync();
+            if (LeakReport.Verdict == NetworkDiagnostics.Verdict.Safe) NetworkJournal.Log(NetworkJournal.Kind.LEAK_OK);
+            else if (LeakReport.Verdict == NetworkDiagnostics.Verdict.Leak) NetworkJournal.Log(NetworkJournal.Kind.LEAK_FAIL);
+        }
         catch { LeakReport = new NetworkDiagnostics.Report(NetworkDiagnostics.Verdict.Error, null, null, null, false, false, false); }
         finally { LeakChecking = false; }
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsMainPage), nameof(IsPingPage), nameof(IsLogPage), nameof(IsBypassPage), nameof(IsAppearancePage), nameof(IsConnectionPage), nameof(IsSecurityPage), nameof(IsUpdatesPage), nameof(IsAboutPage))]
+    [NotifyPropertyChangedFor(nameof(IsMainPage), nameof(IsPingPage), nameof(IsLogPage), nameof(IsBypassPage), nameof(IsAppearancePage), nameof(IsConnectionPage), nameof(IsSecurityPage), nameof(IsUpdatesPage), nameof(IsAboutPage), nameof(IsJournalPage))]
     private SettingsPage page = SettingsPage.Main;
 
     public bool IsMainPage => Page == SettingsPage.Main;
@@ -152,6 +157,25 @@ public sealed partial class SettingsViewModel : ObservableObject
     public bool IsSecurityPage => Page == SettingsPage.Security;
     public bool IsUpdatesPage => Page == SettingsPage.Updates;
     public bool IsAboutPage => Page == SettingsPage.About;
+    public bool IsJournalPage => Page == SettingsPage.Journal;
+
+    /// <summary>«Журнал сети» (Настройки → Подключение, и с «Главной»).</summary>
+    public JournalViewModel Journal { get; } = new(
+        () => VpnEngine.Current?.IsRunning == true,
+        RunOnUi);
+
+    private static void RunOnUi(Action action)
+    {
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess()) action();
+        else Avalonia.Threading.Dispatcher.UIThread.Post(action);
+    }
+
+    [RelayCommand]
+    public void OpenJournal()
+    {
+        Journal.Refresh();
+        Page = SettingsPage.Journal;
+    }
     public bool IsLogEmpty => string.IsNullOrWhiteSpace(LogContent);
 
     [ObservableProperty]
@@ -326,7 +350,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private void Back() => Page = Page switch
     {
         // Без прокрутки настройки разложены по разделам: «назад» — на уровень выше.
-        SettingsPage.Ping or SettingsPage.Bypass => SettingsPage.Connection,
+        SettingsPage.Ping or SettingsPage.Bypass or SettingsPage.Journal => SettingsPage.Connection,
         SettingsPage.Log => SettingsPage.About,
         _ => SettingsPage.Main
     };

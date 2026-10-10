@@ -18,6 +18,7 @@ namespace GodjiVpn;
 /// </summary>
 public partial class App : Application
 {
+    private JournalRecorder? _journalRecorder;
     private DispatcherTimer? _hourlyRefreshTimer;
     private DispatcherTimer? _updateCheckTimer;
     private bool _exiting;
@@ -54,10 +55,12 @@ public partial class App : Application
         var updateService = new UpdateService();
         var updateNotifier = new UpdateNotifier();
         var vpnEngine = new VpnEngine();
+        // Журнал сети: подключения, смена сети, ошибки (см. JournalRecorder/NetworkJournal).
+        _journalRecorder = new JournalRecorder(vpnEngine, subscriptionRepository);
 
         var loginViewModel = new LoginViewModel(apiClient, tokenStore);
-        var connectViewModel = new ConnectViewModel(vpnEngine, subscriptionRepository);
         var pingSettings = new PingSettings();
+        var connectViewModel = new ConnectViewModel(vpnEngine, subscriptionRepository, pingSettings);
         var pingService = new PingService(pingSettings);
         var serversViewModel = new ServersViewModel(subscriptionRepository, pingService, customNodeStore, favoriteServersStore, appSettings);
         var plansViewModel = new PlansViewModel(apiClient, subscriptionRepository, tokenStore);

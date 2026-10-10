@@ -82,11 +82,11 @@ internal enum ClockState
 }
 
 /// <summary>
-/// Стеклянная поверхность дизайна v5 — порт GlassPanel Windows-клиента (а тот — CardStyle.kt
-/// Android). Снизу вверх внутри формы: тень → заливка по уровню → Tint → блик →
-/// диагональный глянец → внутренние тени сверху и снизу → контент → градиентная кромка 1px
-/// (+ акцентная обводка) отдельным слоем поверх контента. CornerRadius зажимается до половины
-/// меньшей стороны — 999 даёт капсулу/круг. Цвета рецепта выставляет стиль из Themes/Glass.axaml.
+/// Поверхность «Goji Expressive» (Material 3 Expressive) — порт Android CardStyle.kt и
+/// GlassPanel Windows-клиента: плотная тональная заливка уровня surfaceContainer или Tint, у
+/// выбранного — акцентная обводка 2px. Имя и свойства прежнего стекла v5 сохранены, чтобы не
+/// трогать разметку. CornerRadius зажимается до половины меньшей стороны — 999 даёт капсулу/круг.
+/// Цвета выставляет стиль из Themes/Glass.axaml.
 /// </summary>
 public class GlassPanel : Decorator, ICustomHitTest
 {
@@ -207,92 +207,28 @@ public class GlassPanel : Decorator, ICustomHitTest
         return dx * dx + dy * dy <= r * r;
     }
 
+    /// <summary>«Goji Expressive» (Material 3 Expressive, порт Android CardStyle.kt 163f5ab):
+    /// плотная тональная заливка нужного уровня (Normal — surfaceContainer, Strong — High, Faint —
+    /// Highest) или Tint, без теней, бликов, кромок и внутренних теней. Свойства рецепта стекла
+    /// остались ради совместимости разметки, но больше ничего не рисуют.</summary>
     public override void Render(DrawingContext ctx)
     {
         var size = Bounds.Size;
         if (size.Width <= 0 || size.Height <= 0) return;
-        var rect = new Rect(size);
-        var r = EffectiveRadius(size);
-        var shape = new RoundedRect(rect, r);
-
+        var shape = new RoundedRect(new Rect(size), EffectiveRadius(size));
         var fill = Level switch
         {
             GlassLevel.Strong => GlassStrongColor,
             GlassLevel.Faint => GlassFaintColor,
             _ => GlassColor
         };
-        var (blur, dy) = Shadow switch
-        {
-            GlassShadow.Card => (22.0, 10.0),
-            GlassShadow.Strong => (26.0, 12.0),
-            GlassShadow.Pill => (12.0, 5.0),
-            _ => (0.0, 0.0)
-        };
-        // Тень рисуется размытием самой Avalonia; заливка стекла полупрозрачна, поэтому тень
-        // рисуем отдельной непрозрачной формой, обрезанной снаружи, — иначе она просвечивала бы.
-        if (blur > 0 && ShadowColor.A > 0)
-        {
-            var shadowGeometry = new CombinedGeometry(GeometryCombineMode.Exclude,
-                new RectangleGeometry(rect.Inflate(blur * 2 + dy)), new RectangleGeometry(rect, r, r));
-            using (ctx.PushGeometryClip(shadowGeometry))
-            {
-                ctx.DrawRectangle(Brushes.Black, null, shape, new BoxShadows(new BoxShadow
-                {
-                    OffsetY = dy,
-                    Blur = blur,
-                    Color = ShadowColor
-                }));
-            }
-        }
-
-        ctx.DrawRectangle(new SolidColorBrush(fill), null, shape);
-        if (Tint != null) ctx.DrawRectangle(Tint, null, shape);
-
-        using (ctx.PushClip(shape))
-        {
-            // Блик. В эталоне он гуляет x .15→.85, y .05→.30 за 7 с, здесь стоит неподвижно в
-            // верхней левой трети: блик есть на каждой карточке, и его движение заставляло
-            // перерисовывать все панели 20 раз в секунду (главная нагрузка в простое).
-            var center = new Point(size.Width * 0.32, size.Height * 0.11);
-            var spot = new RadialGradientBrush
-            {
-                GradientStops =
-                {
-                    new GradientStop(SpotColor, 0),
-                    new GradientStop(WithAlpha(SpotColor, 0), 1)
-                }
-            };
-            ctx.DrawEllipse(spot, null, center, 240, 240);
-
-            ctx.DrawRectangle(new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-                GradientStops = { new GradientStop(GlossColor, 0), new GradientStop(WithAlpha(GlossColor, 0), 0.45) }
-            }, null, rect);
-
-            const double innerH = 14;
-            var innerTop = WithAlpha(InnerTopColor, (byte)(InnerTopColor.A * 0.45));
-            ctx.DrawRectangle(new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
-                GradientStops = { new GradientStop(innerTop, 0), new GradientStop(WithAlpha(innerTop, 0), 1) }
-            }, null, new Rect(0, 0, size.Width, Math.Min(innerH, size.Height)));
-            var bottomH = Math.Min(innerH * 1.3, size.Height);
-            ctx.DrawRectangle(new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
-                GradientStops = { new GradientStop(WithAlpha(InnerBottomColor, 0), 0), new GradientStop(InnerBottomColor, 1) }
-            }, null, new Rect(0, size.Height - bottomH, size.Width, bottomH));
-        }
+        ctx.DrawRectangle(Tint ?? new SolidColorBrush(fill), null, shape);
     }
 
     internal static Color WithAlpha(Color c, byte a) => Color.FromArgb(a, c.R, c.G, c.B);
 
-    /// <summary>Кромка и акцентная обводка — поверх контента (иначе подсветка строк до краёв
-    /// её перекрывала бы).</summary>
+    /// <summary>Акцентная обводка 2px (выбранный сервер, текущий тариф) — поверх контента, иначе
+    /// подсветка строк до краёв её перекрывала бы.</summary>
     private sealed class RimLayer : Control
     {
         private readonly GlassPanel _owner;
@@ -302,27 +238,10 @@ public class GlassPanel : Decorator, ICustomHitTest
         public override void Render(DrawingContext ctx)
         {
             var size = Bounds.Size;
-            if (size.Width <= 1 || size.Height <= 1) return;
+            if (size.Width <= 2 || size.Height <= 2 || !_owner.AccentBorder) return;
             var r = _owner.EffectiveRadius(size);
-            var rim = new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Absolute),
-                EndPoint = new RelativePoint(size.Width * 0.82, size.Height, RelativeUnit.Absolute),
-                GradientStops =
-                {
-                    new GradientStop(_owner.RimAColor, 0),
-                    new GradientStop(_owner.RimBColor, 0.35),
-                    new GradientStop(_owner.RimCColor, 0.62),
-                    new GradientStop(_owner.RimDColor, 1)
-                }
-            };
-            var edge = new Rect(0.5, 0.5, size.Width - 1, size.Height - 1);
-            ctx.DrawRectangle(null, new Pen(rim, 1), new RoundedRect(edge, Math.Max(0, r - 0.5)));
-            if (_owner.AccentBorder)
-            {
-                var ar = new Rect(0.75, 0.75, size.Width - 1.5, size.Height - 1.5);
-                ctx.DrawRectangle(null, new Pen(new SolidColorBrush(_owner.AccentColor), 1.5), new RoundedRect(ar, Math.Max(0, r - 0.75)));
-            }
+            var ar = new Rect(1, 1, size.Width - 2, size.Height - 2);
+            ctx.DrawRectangle(null, new Pen(new SolidColorBrush(_owner.AccentColor), 2), new RoundedRect(ar, Math.Max(0, r - 1)));
         }
     }
 }

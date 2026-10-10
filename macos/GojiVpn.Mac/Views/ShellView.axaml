@@ -4,73 +4,103 @@
              xmlns:c="using:GodjiVpn.Controls"
              xmlns:conv="using:GodjiVpn.Converters"
              x:Class="GodjiVpn.Views.ShellView">
-    <!-- Оболочка: четыре вкладки и плавающая стеклянная панель снизу, под выбранной вкладкой
-         скользит "линза" — как ShellView Windows-клиента. -->
+    <!-- Оболочка: четыре вкладки и короткая нижняя панель навигации M3 Expressive (порт Android
+         GlassTabBar.kt, 163f5ab, как ShellView Windows-клиента): во всю ширину, surfaceContainer,
+         высота 64; у выбранной вкладки под иконкой таблетка secondaryContainer 56×32 раскрывается
+         пружиной от 24 до 56. -->
     <UserControl.Styles>
         <Style Selector="Button.tab">
-            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="VerticalAlignment" Value="Stretch"/>
         </Style>
-        <Style Selector="Button.tab.selected">
-            <Setter Property="Foreground" Value="{DynamicResource TealDeepBrush}"/>
+        <Style Selector="Button.tab Border.indicator">
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Background" Value="{DynamicResource LensBrush}"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.4" Easing="BackEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.tab.selected Border.indicator">
+            <Setter Property="Width" Value="56"/>
+            <Setter Property="Opacity" Value="1"/>
         </Style>
         <Style Selector="Button.tab Path">
-            <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}"/>
+            <Setter Property="Stroke" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="StrokeThickness" Value="2"/>
             <Setter Property="StrokeLineCap" Value="Round"/>
             <Setter Property="StrokeJoin" Value="Round"/>
         </Style>
+        <Style Selector="Button.tab.selected Path">
+            <Setter Property="Stroke" Value="{DynamicResource OnSecondaryContainerBrush}"/>
+        </Style>
         <Style Selector="Button.tab TextBlock">
-            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontSize" Value="{s:Fs 10}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="{s:Fs 12}"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="Margin" Value="0,3,0,0"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
+        <Style Selector="Button.tab.selected TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
         </Style>
     </UserControl.Styles>
     <Panel>
-        <Panel Margin="0,0,0,84">
+        <Panel Margin="0,0,0,64">
             <ContentControl Content="{Binding Connect}" IsVisible="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=0}"/>
             <ContentControl Content="{Binding Servers}" IsVisible="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=1}"/>
             <ContentControl Content="{Binding Plans}" IsVisible="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=2}"/>
             <ContentControl Content="{Binding Settings}" IsVisible="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=3}"/>
         </Panel>
 
-        <c:GlassPanel Classes="strong" CornerRadius="999" Height="64" VerticalAlignment="Bottom" Margin="14,0,14,10" Padding="5">
-            <Panel Name="TabHost">
-                <c:GlassPanel Name="Lens" Classes="pill" Tint="{DynamicResource LensBrush}" HorizontalAlignment="Left"/>
-                <UniformGrid Rows="1" Columns="4">
-                    <Button Classes="bare tab" Tag="0" Click="OnTabClick"
-                            Classes.selected="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=0}">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Viewbox Width="21" Height="21"><Canvas Width="24" Height="24"><Path Data="{StaticResource TabIconHome}"/></Canvas></Viewbox>
-                            <TextBlock Text="Главная"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="bare tab" Tag="1" Click="OnTabClick"
-                            Classes.selected="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=1}">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Viewbox Width="21" Height="21"><Canvas Width="24" Height="24"><Path Data="{StaticResource TabIconServers}"/></Canvas></Viewbox>
-                            <TextBlock Text="Серверы"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="bare tab" Tag="2" Click="OnTabClick"
-                            Classes.selected="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=2}">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Viewbox Width="21" Height="21"><Canvas Width="24" Height="24"><Path Data="{StaticResource TabIconPlans}"/></Canvas></Viewbox>
-                            <TextBlock Text="Подписка"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="bare tab" Tag="3" Click="OnTabClick"
-                            Classes.selected="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=3}">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Viewbox Width="21" Height="21"><Canvas Width="24" Height="24"><Path Data="{StaticResource TabIconSettings}"/></Canvas></Viewbox>
-                            <TextBlock Text="Настройки"/>
-                        </StackPanel>
-                    </Button>
-                </UniformGrid>
-            </Panel>
-        </c:GlassPanel>
+        <Border Height="64" VerticalAlignment="Bottom" Background="{DynamicResource SurfaceContainerBrush}">
+            <UniformGrid Rows="1" Columns="4">
+                <Button Classes="bare tab" Tag="0" Click="OnTabClick"
+                        Classes.selected="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=0}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+                        <Panel Width="56" Height="32" HorizontalAlignment="Center">
+                            <Border Classes="indicator"/>
+                            <Viewbox Width="22" Height="22"><Canvas Width="24" Height="24"><Path Data="{StaticResource TabIconHome}"/></Canvas></Viewbox>
+                        </Panel>
+                        <TextBlock Text="Главная"/>
+                    </StackPanel>
+                </Button>
+                <Button Classes="bare tab" Tag="1" Click="OnTabClick"
+                        Classes.selected="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=1}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+                        <Panel Width="56" Height="32" HorizontalAlignment="Center">
+                            <Border Classes="indicator"/>
+                            <Viewbox Width="22" Height="22"><Canvas Width="24" Height="24"><Path Data="{StaticResource TabIconServers}"/></Canvas></Viewbox>
+                        </Panel>
+                        <TextBlock Text="Серверы"/>
+                    </StackPanel>
+                </Button>
+                <Button Classes="bare tab" Tag="2" Click="OnTabClick"
+                        Classes.selected="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=2}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+                        <Panel Width="56" Height="32" HorizontalAlignment="Center">
+                            <Border Classes="indicator"/>
+                            <Viewbox Width="22" Height="22"><Canvas Width="24" Height="24"><Path Data="{StaticResource TabIconPlans}"/></Canvas></Viewbox>
+                        </Panel>
+                        <TextBlock Text="Подписка"/>
+                    </StackPanel>
+                </Button>
+                <Button Classes="bare tab" Tag="3" Click="OnTabClick"
+                        Classes.selected="{Binding SelectedTabIndex, Converter={x:Static conv:Conv.IntEquals}, ConverterParameter=3}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+                        <Panel Width="56" Height="32" HorizontalAlignment="Center">
+                            <Border Classes="indicator"/>
+                            <Viewbox Width="22" Height="22"><Canvas Width="24" Height="24"><Path Data="{StaticResource TabIconSettings}"/></Canvas></Viewbox>
+                        </Panel>
+                        <TextBlock Text="Настройки"/>
+                    </StackPanel>
+                </Button>
+            </UniformGrid>
+        </Border>
     </Panel>
 </UserControl>

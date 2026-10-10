@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:s="using:GodjiVpn.Utils"
              xmlns:c="using:GodjiVpn.Controls"
+             xmlns:conv="using:GodjiVpn.Converters"
              x:Class="GodjiVpn.Views.SettingsView">
     <!-- Настройки v5 «Стекло» — как SettingsView Windows-клиента (без правил Wi-Fi):
          главная страница — список разделов, каждый раздел — свой подэкран (без прокрутки);
@@ -20,6 +21,23 @@
         <Style Selector="Ellipse.radioRing.on"><Setter Property="Stroke" Value="{DynamicResource TealDeepBrush}"/></Style>
         <Style Selector="Border.bypassBox"><Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/></Style>
         <Style Selector="Border.bypassBox.error"><Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/></Style>
+        <Style Selector="Border.hour"><Setter Property="Background" Value="{DynamicResource TealBrush}"/></Style>
+        <Style Selector="Border.hour.issue"><Setter Property="Background" Value="{DynamicResource TerracottaBrush}"/></Style>
+        <Style Selector="Border.hour.empty"><Setter Property="Background" Value="{DynamicResource TrackBgBrush}"/></Style>
+        <Style Selector="Border.hour.future">
+            <Setter Property="Background" Value="{DynamicResource TrackBgBrush}"/>
+            <Setter Property="Opacity" Value="0.45"/>
+        </Style>
+        <Style Selector="TextBlock.hourTick">
+            <Setter Property="FontSize" Value="{s:Fs 10.5}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.issues"><Setter Property="Foreground" Value="{DynamicResource TerracottaBrush}"/></Style>
+        <Style Selector="TextBlock.issues.none"><Setter Property="Foreground" Value="{DynamicResource TealBrush}"/></Style>
+        <Style Selector="Ellipse.eventDot"><Setter Property="Fill" Value="{DynamicResource OffDotBrush}"/></Style>
+        <Style Selector="Ellipse.eventDot.ok"><Setter Property="Fill" Value="{DynamicResource TealBrush}"/></Style>
+        <Style Selector="Ellipse.eventDot.issue"><Setter Property="Fill" Value="{DynamicResource TerracottaBrush}"/></Style>
+        <Style Selector="Ellipse.eventDot.switch"><Setter Property="Fill" Value="{DynamicResource WarningBrush}"/></Style>
         <Style Selector="Button.back">
             <Setter Property="Padding" Value="0,0,10,0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -46,7 +64,7 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel>
                                 <TextBlock Classes="rowTitle" Text="Подключение"/>
-                                <TextBlock Classes="rowSub" Text="Пинг серверов, сайты мимо VPN"/>
+                                <TextBlock Classes="rowSub" Text="Журнал сети, пинг, сайты мимо VPN"/>
                             </StackPanel>
                             <Path Grid.Column="1" Classes="icon secondary" Data="{StaticResource IconChevronRight}" Width="15" Height="15" Margin="12,0,0,0"/>
                         </Grid>
@@ -130,6 +148,16 @@
             </StackPanel>
             <c:GlassPanel Classes="card" CornerRadius="24" Margin="0,16,0,0">
                 <StackPanel>
+                    <Button Classes="row" AutomationProperties.Name="Журнал сети" Command="{Binding OpenJournalCommand}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Classes="rowTitle" Text="Журнал сети"/>
+                                <TextBlock Classes="rowSub" Text="Когда VPN работал, смены сети и сбои"/>
+                            </StackPanel>
+                            <Path Grid.Column="1" Classes="icon secondary" Data="{StaticResource IconChevronRight}" Width="15" Height="15" Margin="12,0,0,0"/>
+                        </Grid>
+                    </Button>
+                    <Rectangle Classes="hair"/>
                     <Button Classes="row" AutomationProperties.Name="Настройки пинга" Command="{Binding OpenPingSettingsCommand}">
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel>
@@ -313,6 +341,109 @@
                 </ItemsControl>
             </c:GlassPanel>
         </StackPanel>
+
+        <!-- ═══ Подэкран: Журнал сети (порт Android JournalScreen.kt, как в Windows-клиенте) ═══ -->
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,16,16,12" IsVisible="{Binding IsJournalPage}">
+            <StackPanel Orientation="Horizontal">
+                <Button Classes="bare back" Command="{Binding BackCommand}">
+                    <Path Classes="icon" Data="{StaticResource IconArrowBack}" Width="22" Height="22"/>
+                </Button>
+                <TextBlock Classes="subTitle" Text="Журнал сети" FontSize="{s:Fs 24}"/>
+            </StackPanel>
+
+            <c:SegmentedControl Grid.Row="1" ItemsSource="{Binding Journal.Days}" DisplayMemberPath="Label"
+                                SelectedIndex="{Binding Journal.DayIndex, Mode=TwoWay}" Margin="0,14,0,0"/>
+
+            <c:GlassPanel Grid.Row="2" Classes="card" Margin="0,8,0,0" Padding="16,12">
+                <StackPanel>
+                    <Grid>
+                        <StackPanel VerticalAlignment="Bottom">
+                            <TextBlock Text="Под защитой" FontWeight="SemiBold" FontSize="{s:Fs 12}" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <TextBlock Text="{Binding Journal.ProtectedLabel}" FontWeight="Medium" FontSize="{s:Fs 11.5}" Foreground="{DynamicResource TextSecondaryBrush}"
+                                       Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Journal.PercentLabel}" FontWeight="ExtraBold" FontSize="{s:Fs 24}" Foreground="{DynamicResource TealBrush}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Journal.Hours}" Height="56" Margin="0,8,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" Columns="24"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="hour" Height="{Binding Height}" VerticalAlignment="Bottom" Margin="1.5,0" CornerRadius="3"
+                                        Classes.issue="{Binding Level, Converter={x:Static conv:Conv.StringIn}, ConverterParameter='issue'}"
+                                        Classes.empty="{Binding Level, Converter={x:Static conv:Conv.StringIn}, ConverterParameter='empty'}"
+                                        Classes.future="{Binding Level, Converter={x:Static conv:Conv.StringIn}, ConverterParameter='future'}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Grid ColumnDefinitions="*,*,*,*,*" Margin="0,8,0,0">
+                        <TextBlock Grid.Column="0" Classes="hourTick" Text="00:00" HorizontalAlignment="Left"/>
+                        <TextBlock Grid.Column="1" Classes="hourTick" Text="06:00" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Classes="hourTick" Text="12:00" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="3" Classes="hourTick" Text="18:00" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="4" Classes="hourTick" Text="24:00" HorizontalAlignment="Right"/>
+                    </Grid>
+                </StackPanel>
+            </c:GlassPanel>
+
+            <UniformGrid Grid.Row="3" Rows="1" Columns="3" Margin="-4,8,-4,0">
+                <c:GlassPanel Classes="card" CornerRadius="20" Margin="4,0" Padding="12,10">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Journal.Connects}" FontWeight="ExtraBold" FontSize="{s:Fs 20}"/>
+                        <TextBlock Text="подключения" FontWeight="Medium" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </c:GlassPanel>
+                <c:GlassPanel Classes="card" CornerRadius="20" Margin="4,0" Padding="12,10">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Journal.NetworkChanges}" FontWeight="ExtraBold" FontSize="{s:Fs 20}"/>
+                        <TextBlock Text="смены сети" FontWeight="Medium" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </c:GlassPanel>
+                <c:GlassPanel Classes="card" CornerRadius="20" Margin="4,0" Padding="12,10">
+                    <StackPanel>
+                        <TextBlock Classes="issues" Classes.none="{Binding Journal.Issues, Converter={x:Static conv:Conv.IsZero}}"
+                                   Text="{Binding Journal.Issues}" FontWeight="ExtraBold" FontSize="{s:Fs 20}"/>
+                        <TextBlock Text="сбои" FontWeight="Medium" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </c:GlassPanel>
+            </UniformGrid>
+
+            <TextBlock Grid.Row="4" Classes="section" Text="СОБЫТИЯ" Margin="8,14,8,0"/>
+            <c:GlassPanel Grid.Row="5" Classes="card" Margin="0,8,0,0" VerticalAlignment="Top">
+                <Panel>
+                    <TextBlock Classes="muted" Text="Пока тихо. События появятся, когда VPN начнёт работать." FontSize="{s:Fs 12.5}"
+                               LineHeight="{s:Fs 17}" TextWrapping="Wrap" Margin="16,14" IsVisible="{Binding !Journal.HasEvents}"/>
+                    <c:PagedItems ItemsSource="{Binding Journal.Events}" IsVisible="{Binding Journal.HasEvents}">
+                        <c:PagedItems.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <Rectangle Classes="hair pagedSep"/>
+                                    <Grid ColumnDefinitions="44,Auto,*" Margin="14,10">
+                                        <TextBlock Text="{Binding Time}" FontWeight="Bold" FontSize="{s:Fs 12}" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        <Ellipse Grid.Column="1" Classes="eventDot" Width="8" Height="8" Margin="0,5,10,0" VerticalAlignment="Top"
+                                                 Classes.ok="{Binding Level, Converter={x:Static conv:Conv.StringIn}, ConverterParameter='ok'}"
+                                                 Classes.issue="{Binding Level, Converter={x:Static conv:Conv.StringIn}, ConverterParameter='issue'}"
+                                                 Classes.switch="{Binding Level, Converter={x:Static conv:Conv.StringIn}, ConverterParameter='switch'}"/>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="{s:Fs 13.5}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Text}" FontSize="{s:Fs 11.5}" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       TextWrapping="Wrap" MaxHeight="34" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"
+                                                       IsVisible="{Binding HasText}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </DataTemplate>
+                        </c:PagedItems.ItemTemplate>
+                    </c:PagedItems>
+                </Panel>
+            </c:GlassPanel>
+            <TextBlock Grid.Row="6" Text="Журнал хранится 7 дней и только на этом компьютере." FontSize="{s:Fs 11}"
+                       Foreground="{DynamicResource TextMutedBrush}" Margin="8,8,8,0" TextWrapping="Wrap"/>
+        </Grid>
 
         <Panel IsVisible="{Binding IsPingPage}">
             <StackPanel Margin="18,18,18,10">

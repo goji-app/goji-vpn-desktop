@@ -2,7 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:s="using:GodjiVpn.Utils"
         xmlns:c="using:GodjiVpn.Controls">
-    <!-- Компоненты дизайна v5 «Стекло» — те же, что в Windows-клиенте (Themes/Glass.xaml),
+    <!-- Компоненты «Goji Expressive» (Material 3 Expressive, порт Android ui/theme 163f5ab;
+         имена классов v5 «Стекло» сохранены) — те же, что в Windows-клиенте (Themes/Glass.xaml),
          в виде классов Avalonia: GlassPanel.card/.pill/.strong/.flat, Button.bare/.row/.accent/
          .ink/.chip/.circle/.link/.danger, TextBlock.title/.section/.rowTitle/.rowSub. -->
 
@@ -11,7 +12,7 @@
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
 
-    <!-- ── Стекло ── -->
+    <!-- ── Поверхности (тональные, без теней и бликов) ── -->
     <Style Selector="c|GlassPanel">
         <Setter Property="GlassColor" Value="{DynamicResource GlassColor}"/>
         <Setter Property="GlassStrongColor" Value="{DynamicResource GlassStrongColor}"/>
@@ -28,22 +29,22 @@
         <Setter Property="AccentColor" Value="{DynamicResource TealColor}"/>
     </Style>
     <Style Selector="c|GlassPanel.card">
-        <Setter Property="CornerRadius" Value="26"/>
+        <Setter Property="CornerRadius" Value="24"/>
         <Setter Property="Level" Value="Normal"/>
         <Setter Property="Shadow" Value="Card"/>
     </Style>
     <Style Selector="c|GlassPanel.pill">
         <Setter Property="CornerRadius" Value="999"/>
-        <Setter Property="Level" Value="Normal"/>
+        <Setter Property="Level" Value="Strong"/>
         <Setter Property="Shadow" Value="Pill"/>
     </Style>
     <Style Selector="c|GlassPanel.strong">
-        <Setter Property="CornerRadius" Value="32"/>
+        <Setter Property="CornerRadius" Value="28"/>
         <Setter Property="Level" Value="Strong"/>
         <Setter Property="Shadow" Value="Strong"/>
     </Style>
     <Style Selector="c|GlassPanel.flat">
-        <Setter Property="CornerRadius" Value="20"/>
+        <Setter Property="CornerRadius" Value="16"/>
         <Setter Property="Level" Value="Faint"/>
         <Setter Property="Shadow" Value="None"/>
     </Style>
@@ -54,7 +55,7 @@
     </Style>
     <Style Selector="TextBlock.title">
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="FontSize" Value="{s:Fs 30}"/>
+        <Setter Property="FontSize" Value="{s:Fs 26}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
     <Style Selector="TextBlock.subTitle">
@@ -96,12 +97,12 @@
     </Style>
 
     <Style Selector="Rectangle.hair">
-        <Setter Property="Height" Value="1"/>
-        <Setter Property="Fill" Value="{DynamicResource HairBrush}"/>
+        <Setter Property="Height" Value="2"/>
+        <Setter Property="Fill" Value="{DynamicResource BgSolidBrush}"/>
     </Style>
     <Style Selector="Rectangle.vhair">
-        <Setter Property="Width" Value="1"/>
-        <Setter Property="Fill" Value="{DynamicResource HairBrush}"/>
+        <Setter Property="Width" Value="2"/>
+        <Setter Property="Fill" Value="{DynamicResource BgSolidBrush}"/>
     </Style>
 
     <Style Selector="Path.icon">
@@ -120,7 +121,7 @@
     <Style Selector="Path.icon.muted"><Setter Property="Fill" Value="{DynamicResource TextMutedBrush}"/></Style>
     <Style Selector="Path.icon.terra"><Setter Property="Fill" Value="{DynamicResource TerracottaBrush}"/></Style>
     <Style Selector="Path.icon.inkText"><Setter Property="Fill" Value="{DynamicResource InkBtnTextBrush}"/></Style>
-    <Style Selector="Path.icon.white"><Setter Property="Fill" Value="White"/></Style>
+    <Style Selector="Path.icon.white"><Setter Property="Fill" Value="{DynamicResource SurfaceBrush}"/></Style>
 
     <!-- ── Кнопки ── -->
     <Style Selector="Button.bare, Button.row, Button.accent, Button.ink, Button.chip, Button.circle, Button.link, Button.danger">
@@ -173,15 +174,14 @@
     <!-- Капсула с акцентным градиентом. -->
     <Style Selector="Button.accent">
         <Setter Property="Height" Value="48"/>
-        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Foreground" Value="{DynamicResource SurfaceBrush}"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="FontSize" Value="{s:Fs 14}"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Template">
             <ControlTemplate>
-                <Border CornerRadius="999" Background="{DynamicResource AccentGradientBrush}" Padding="16,0"
-                        BoxShadow="0 3 18 0 #5900A79B">
+                <Border CornerRadius="999" Background="{DynamicResource AccentGradientBrush}" Padding="16,0">
                     <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                                       HorizontalAlignment="Center" VerticalAlignment="Center"
                                       Foreground="{TemplateBinding Foreground}"/>
@@ -210,7 +210,7 @@
     <!-- Красная капсула для опасного действия. -->
     <Style Selector="Button.danger">
         <Setter Property="Height" Value="44"/>
-        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Foreground" Value="{DynamicResource SurfaceBrush}"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="FontSize" Value="{s:Fs 13.5}"/>
         <Setter Property="Template">

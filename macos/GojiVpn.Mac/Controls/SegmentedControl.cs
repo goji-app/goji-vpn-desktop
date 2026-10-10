@@ -61,7 +61,7 @@ public class SegmentedControl : UserControl
         _thumb.BorderThickness = new Thickness(1);
         _thumb[!Border.BackgroundProperty] = new DynamicResourceExtension("ThumbBrush");
         _thumb[!Border.BorderBrushProperty] = new DynamicResourceExtension("CardBorderBrush");
-        _thumb.BoxShadow = BoxShadows.Parse("0 1 8 0 #1F000000");
+        // M3: выбранный сегмент — плоская заливка secondaryContainer, без тени.
         _root.Children.Add(_thumb);
         _root.Children.Add(_cells);
         BuildTrack();

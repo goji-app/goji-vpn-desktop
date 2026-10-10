@@ -46,6 +46,19 @@ public static class Conv
     /// <summary>int == ConverterParameter (номер вкладки/страницы).</summary>
     public static readonly IValueConverter IntEquals = new IntEqualsConverter();
 
+    /// <summary>Строка входит в список через запятую из ConverterParameter (уровень качества
+    /// канала → класс цвета: "excellent,good").</summary>
+    public static readonly IValueConverter StringIn = new StringInConverter();
+
+    private sealed class StringInConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            value is string v && (parameter?.ToString() ?? "").Split(',').Contains(v);
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
     private sealed class IntEqualsConverter : IValueConverter
     {
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>

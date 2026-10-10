@@ -84,11 +84,13 @@ public abstract class AnimatedControl : Control
 }
 
 /// <summary>
-/// Кнопка подключения 80×80 — порт PowerButton Windows-клиента: выключено — стеклянный круг,
-/// подключение — вращающаяся дуга Teal/Terracotta вокруг, включено — круг с акцентным
-/// градиентом, свечением и двумя расходящимися кольцами.
+/// Кнопка подключения «Goji Expressive» — порт Android ConnectButton (ConnectScreen.kt, 163f5ab):
+/// «печенье» Material 3 Expressive 64×64 с 8 мягкими волнами по краю. Выключено —
+/// primaryContainer; подключение — печенье вращается; включено — заливка primary, волны
+/// сглаживаются почти в круг. Нажатие «вдавливает» волны — форма морфится пружиной. Без колец,
+/// свечения и теней: кадры рисуются только во время морфа и вращения.
 /// </summary>
-public class PowerButton : Panel
+public class PowerButton : AnimatedControl
 {
     public static readonly StyledProperty<bool> IsOnProperty = AvaloniaProperty.Register<PowerButton, bool>(nameof(IsOn));
     public static readonly StyledProperty<bool> IsBusyProperty = AvaloniaProperty.Register<PowerButton, bool>(nameof(IsBusy));
@@ -98,116 +100,89 @@ public class PowerButton : Panel
     public bool IsBusy { get => GetValue(IsBusyProperty); set => SetValue(IsBusyProperty, value); }
     public ICommand? Command { get => GetValue(CommandProperty); set => SetValue(CommandProperty, value); }
 
-    private readonly Fx _fx;
-    private readonly GlassPanel _glass = new() { CornerRadius = 999, Level = GlassLevel.Strong, Shadow = GlassShadow.Strong };
-    private readonly Accent _accent = new() { IsHitTestVisible = false };
-    private readonly Avalonia.Controls.Shapes.Path _icon = new() { Width = 28, Height = 28, Stretch = Stretch.Uniform, IsHitTestVisible = false };
+    private const double Size = 64;
+    private const int Lobes = 8;
+    private bool _pressed;
+    private double _depth = 0.055;
+    private double _velocity;
+    private double _lastFrame = -1;
+    private double _angle;
 
     public PowerButton()
     {
-        Width = 80;
-        Height = 80;
+        Width = Size;
+        Height = Size;
         HorizontalAlignment = HorizontalAlignment.Center;
         Cursor = new Cursor(StandardCursorType.Hand);
-        _fx = new Fx(this) { IsHitTestVisible = false };
-        Children.Add(_fx);
-        Children.Add(_glass);
-        Children.Add(_accent);
-        _icon[!Avalonia.Controls.Shapes.Path.DataProperty] = new DynamicResourceExtension("IconPower");
-        Children.Add(_icon);
-        RenderTransform = new ScaleTransform(1, 1);
-        PointerPressed += (_, _) => RenderTransform = new ScaleTransform(0.94, 0.94);
+        PointerPressed += (_, _) => { _pressed = true; Restart(); };
         PointerReleased += (_, e) =>
         {
-            RenderTransform = new ScaleTransform(1, 1);
-            if (e.InitialPressMouseButton == MouseButton.Left && Command?.CanExecute(null) == true) Command.Execute(null);
+            var inside = new Rect(Bounds.Size).Contains(e.GetPosition(this));
+            _pressed = false;
+            Restart();
+            if (inside && e.InitialPressMouseButton == MouseButton.Left && Command?.CanExecute(null) == true) Command.Execute(null);
         };
-        PointerCaptureLost += (_, _) => RenderTransform = new ScaleTransform(1, 1);
-        UpdateState();
+        PointerCaptureLost += (_, _) => { _pressed = false; Restart(); };
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == IsOnProperty || change.Property == IsBusyProperty) UpdateState();
+        if (change.Property == IsOnProperty || change.Property == IsBusyProperty) Restart();
     }
 
-    private void UpdateState()
-    {
-        _glass.IsVisible = !IsOn;
-        _accent.IsVisible = IsOn;
-        if (IsOn) _icon.Fill = Brushes.White;
-        else _icon[!Avalonia.Controls.Shapes.Path.FillProperty] = new DynamicResourceExtension("TextPrimaryBrush");
-        _fx.Restart();
-    }
+    // Вращается, пока идёт подключение; пружина формы успокаивается примерно за секунду.
+    protected override bool IsContinuous => IsBusy && !IsOn;
+    protected override double MotionDuration => 1.2;
 
-    private sealed class Accent : AnimatedControl
+    private double TargetDepth => _pressed ? 0.09 : IsOn ? 0.025 : 0.055;
+
+    public override void Render(DrawingContext ctx)
     {
-        public override void Render(DrawingContext ctx)
+        var now = Seconds;
+        var dt = _lastFrame < 0 || now < _lastFrame ? 0 : Math.Min(now - _lastFrame, 0.05);
+        _lastFrame = now;
+        // Пружина (dampingRatio 0.45, stiffness 380 в Android): x'' = -k(x - x0) - c·x'.
+        const double k = 380, c = 2 * 0.45 * 19.5;
+        _velocity += (-k * (_depth - TargetDepth) - c * _velocity) * dt;
+        _depth += _velocity * dt;
+        if (MotionDone) { _depth = TargetDepth; _velocity = 0; }
+        if (IsContinuous) _angle = (_angle + dt * 200) % 360; else _angle = 0;
+
+        var fill = IsOn ? Res("TealBrush", Brushes.Teal) : Res("PrimaryContainerBrush", Brushes.LightGreen);
+        var iconFill = IsOn ? Res("SurfaceBrush", Brushes.White) : Res("OnPrimaryContainerBrush", Brushes.Black);
+        var cx = Bounds.Width / 2;
+        var cy = Bounds.Height / 2;
+        var r = Math.Min(cx, cy) / (1 + Math.Max(0, _depth));
+        var rot = _angle * Math.PI / 180;
+        var g = new StreamGeometry();
+        using (var s = g.Open())
         {
-            var rect = new Rect(Bounds.Size);
-            var glow = ResColor("AccentGlowColor", Color.Parse("#5900A79B"));
-            ctx.DrawRectangle(Res("AccentGradientBrush", Brushes.Teal), new Pen(new SolidColorBrush(Color.FromArgb(140, 255, 255, 255)), 1),
-                new RoundedRect(rect, rect.Width / 2), new BoxShadows(new BoxShadow { OffsetY = 4, Blur = 22, Color = glow }));
+            const int steps = 144;
+            for (var i = 0; i < steps; i++)
+            {
+                var t = i / (double)steps * 2 * Math.PI;
+                var rr = r * (1 + _depth * Math.Cos(Lobes * t));
+                var pt = new Point(cx + rr * Math.Cos(t + rot), cy + rr * Math.Sin(t + rot));
+                if (i == 0) s.BeginFigure(pt, true); else s.LineTo(pt);
+            }
+            s.EndFigure(true);
         }
-    }
+        ctx.DrawGeometry(fill, null, g);
 
-    private sealed class Fx : AnimatedControl
-    {
-        private readonly PowerButton _owner;
-
-        public Fx(PowerButton owner) => _owner = owner;
-
-        // Спиннер подключения крутится, пока идёт подключение; кольца вокруг включённой кнопки
-        // расходятся три раза после подключения и исчезают.
-        protected override bool IsContinuous => _owner.IsBusy && !_owner.IsOn;
-        protected override double MotionDuration => _owner.IsOn ? 2.4 * 3 + 1.2 : 0;
-
-        public override void Render(DrawingContext ctx)
+        if (this.TryFindResource("IconPower", ActualThemeVariant, out var icon) && icon is Geometry iconGeometry)
         {
-            var c = new Point(Bounds.Width / 2, Bounds.Height / 2);
-            var teal = Res("TealBrush", Brushes.Teal);
-            if (_owner.IsOn)
-            {
-                ctx.DrawEllipse(Res("TealTintBrush", Brushes.Transparent), null, c, 48, 48);
-                var tealColor = ResColor("TealColor", Colors.Teal);
-                for (var i = 0; i < 2 && !MotionDone; i++)
-                {
-                    var local = Seconds - i * 1.2;
-                    if (local < 0 || local >= 2.4 * 3) continue;
-                    var p = local / 2.4 % 1;
-                    var eased = 1 - (1 - p) * (1 - p);
-                    var r = 40 * (1 + 0.55 * eased);
-                    var alpha = (byte)(0.5 * (1 - eased) * 255);
-                    ctx.DrawEllipse(null, new Pen(new SolidColorBrush(Color.FromArgb(alpha, tealColor.R, tealColor.G, tealColor.B)), 2), c, r, r);
-                }
-            }
-            else if (_owner.IsBusy)
-            {
-                var angle = Seconds * 360 % 360;
-                const double r = 45 - 1.25;
-                DrawArc(ctx, c, r, 225 + angle, 90, teal);
-                DrawArc(ctx, c, r, 315 + angle, 90, Res("TerracottaBrush", Brushes.OrangeRed));
-            }
-        }
-
-        private static void DrawArc(DrawingContext ctx, Point c, double r, double startDeg, double sweepDeg, IBrush brush)
-        {
-            Point P(double deg) => new(c.X + r * Math.Cos(deg * Math.PI / 180), c.Y + r * Math.Sin(deg * Math.PI / 180));
-            var g = new StreamGeometry();
-            using (var s = g.Open())
-            {
-                s.BeginFigure(P(startDeg), false);
-                s.ArcTo(P(startDeg + sweepDeg), new Size(r, r), 0, false, SweepDirection.Clockwise);
-                s.EndFigure(false);
-            }
-            ctx.DrawGeometry(null, new Pen(brush, 2.5), g);
+            var b = iconGeometry.Bounds;
+            var scale = 26 / Math.Max(b.Width, b.Height);
+            var m = Matrix.CreateTranslation(-b.X - b.Width / 2, -b.Y - b.Height / 2) * Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(cx, cy);
+            using (ctx.PushTransform(m))
+                ctx.DrawGeometry(iconFill, null, iconGeometry);
         }
     }
 }
 
-/// <summary>Полоса прогресса 8px: дорожка TrackBg, заливка акцентным градиентом, бегущий
-/// блик по заливке (трафик, загрузка обновления).</summary>
+/// <summary>Полоса прогресса 8px (трафик, загрузка обновления): дорожка TrackBg и плоская заливка
+/// primary, плавно догоняющая значение. «Goji Expressive»: бегущий блик v5 убран.</summary>
 public class ShimmerBar : AnimatedControl
 {
     public static readonly StyledProperty<double> ValueProperty = AvaloniaProperty.Register<ShimmerBar, double>(nameof(Value));
@@ -217,9 +192,8 @@ public class ShimmerBar : AnimatedControl
 
     public ShimmerBar() => Height = 8;
 
-    // Заливка догоняет значение, блик пробегает три раза — потом полоса статична до
-    // следующего изменения значения.
-    protected override double MotionDuration => 2.2 * 3;
+    // Заливка догоняет новое значение примерно за секунду, потом полоса статична.
+    protected override double MotionDuration => 1.2;
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -236,24 +210,7 @@ public class ShimmerBar : AnimatedControl
         ctx.DrawRectangle(Res("TrackBgBrush", Brushes.LightGray), null, new RoundedRect(new Rect(0, 0, w, h), h / 2));
         var fw = w * _shown;
         if (fw < 1) return;
-        var fill = new RoundedRect(new Rect(0, 0, Math.Max(fw, h), h), h / 2);
-        ctx.DrawRectangle(Res("AccentGradientBrush", Brushes.Teal), null, fill);
-        if (MotionDone) return;
-        using (ctx.PushClip(fill))
-        {
-            var x = (Seconds / 2.2 % 1) * (fw + 60) - 60;
-            ctx.DrawRectangle(new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-                GradientStops =
-                {
-                    new GradientStop(Color.FromArgb(0, 255, 255, 255), 0),
-                    new GradientStop(Color.FromArgb(110, 255, 255, 255), 0.5),
-                    new GradientStop(Color.FromArgb(0, 255, 255, 255), 1)
-                }
-            }, null, new Rect(x, 0, 60, h));
-        }
+        ctx.DrawRectangle(Res("TealBrush", Brushes.Teal), null, new RoundedRect(new Rect(0, 0, Math.Max(fw, h), h), h / 2));
     }
 }
 
@@ -330,32 +287,48 @@ public class DaysRing : Panel
     }
 }
 
-/// <summary>"Живой" бейдж статуса ("АКТИВНА"): капсула с ядром RingCore, по кромке бежит
-/// комета акцентного цвета (конический градиент), внутри — пульсирующая точка и подпись.</summary>
-public class ActiveBadge : Panel
+/// <summary>Общая тональная таблетка бейджей «Goji Expressive» (порт Android StatusBadges.kt,
+/// 163f5ab): фон, высота и ряд «значок + подпись». В v5 бейджи анимировались (комета по рамке,
+/// пульсирующая точка, перелив) — теперь это обычные плашки, которые рисуются один раз.</summary>
+public abstract class TonalPill : Border
+{
+    protected readonly StackPanel Row = new() { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+
+    protected TonalPill(double height)
+    {
+        Height = height;
+        VerticalAlignment = VerticalAlignment.Center;
+        CornerRadius = new CornerRadius(height / 2);
+        Padding = new Thickness(10, 0);
+        Child = Row;
+    }
+
+    protected void SetBackgroundKey(string key) => this[!BackgroundProperty] = new DynamicResourceExtension(key);
+
+    protected static TextBlock Label(double size, string foregroundKey)
+    {
+        var t = new TextBlock { FontWeight = FontWeight.ExtraBold, [!TextBlock.FontSizeProperty] = FontScale.For(size), VerticalAlignment = VerticalAlignment.Center };
+        t[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(foregroundKey);
+        return t;
+    }
+}
+
+/// <summary>«АКТИВНА»: заливка primary, точка и подпись цвета onPrimary.</summary>
+public class ActiveBadge : TonalPill
 {
     public static readonly StyledProperty<string> TextProperty = AvaloniaProperty.Register<ActiveBadge, string>(nameof(Text), "АКТИВНА");
     public string Text { get => GetValue(TextProperty); set => SetValue(TextProperty, value); }
 
-    private readonly TextBlock _label = new() { FontWeight = FontWeight.ExtraBold, [!TextBlock.FontSizeProperty] = FontScale.For(10), VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _label = Label(10, "SurfaceBrush");
 
-    public ActiveBadge()
+    public ActiveBadge() : base(26)
     {
-        Height = 26;
-        VerticalAlignment = VerticalAlignment.Center;
-        Children.Add(new Comet());
-        var core = new Border { Margin = new Thickness(1.5), CornerRadius = new CornerRadius(999), Padding = new Thickness(10, 0, 12, 0) };
-        core[!Border.BackgroundProperty] = new DynamicResourceExtension("RingCoreBrush");
-        _label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("TealDeepBrush");
+        SetBackgroundKey("TealBrush");
+        var dot = new Avalonia.Controls.Shapes.Ellipse { Width = 7, Height = 7, VerticalAlignment = VerticalAlignment.Center };
+        dot[!Avalonia.Controls.Shapes.Shape.FillProperty] = new DynamicResourceExtension("SurfaceBrush");
         _label.Text = Text;
-        core.Child = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 6,
-            VerticalAlignment = VerticalAlignment.Center,
-            Children = { new Dot(), _label }
-        };
-        Children.Add(core);
+        Row.Children.Add(dot);
+        Row.Children.Add(_label);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -363,56 +336,10 @@ public class ActiveBadge : Panel
         base.OnPropertyChanged(change);
         if (change.Property == TextProperty) _label.Text = Text;
     }
-
-    private sealed class Comet : AnimatedControl
-    {
-        protected override double MotionDuration => 2.6 * 3;
-
-        public override void Render(DrawingContext ctx)
-        {
-            var rect = new Rect(Bounds.Size);
-            if (rect.Width <= 0) return;
-            var teal = ResColor("TealColor", Colors.Teal);
-            var brush = new ConicGradientBrush
-            {
-                Angle = Seconds * 360 / 2.6 % 360,
-                GradientStops =
-                {
-                    new GradientStop(Color.FromArgb(0, teal.R, teal.G, teal.B), 0),
-                    new GradientStop(Color.FromArgb(0, teal.R, teal.G, teal.B), 0.55),
-                    new GradientStop(teal, 0.95),
-                    new GradientStop(Color.FromArgb(0, teal.R, teal.G, teal.B), 1)
-                }
-            };
-            ctx.DrawRectangle(Res("CardBorderBrush", Brushes.White), null, new RoundedRect(rect, rect.Height / 2));
-            ctx.DrawRectangle(brush, null, new RoundedRect(rect, rect.Height / 2));
-        }
-    }
-
-    private sealed class Dot : AnimatedControl
-    {
-        public Dot()
-        {
-            Width = 7;
-            Height = 7;
-            VerticalAlignment = VerticalAlignment.Center;
-        }
-
-        protected override double MotionDuration => 1.6 * 3;
-
-        public override void Render(DrawingContext ctx)
-        {
-            var c = new Point(3.5, 3.5);
-            var teal = ResColor("TealColor", Colors.Teal);
-            var p = MotionDone ? 1 : Seconds / 1.6 % 1;
-            ctx.DrawEllipse(new SolidColorBrush(Color.FromArgb((byte)(90 * (1 - p)), teal.R, teal.G, teal.B)), null, c, 3.5 + 3 * p, 3.5 + 3 * p);
-            ctx.DrawEllipse(new SolidColorBrush(teal), null, c, 3.5, 3.5);
-        }
-    }
 }
 
-/// <summary>Голографический бейдж ("Текущий", "НОВАЯ"): переливающийся градиент с бликом.</summary>
-public class HoloBadge : Panel
+/// <summary>«Текущий» / «НОВАЯ»: tertiaryContainer (Reverse — primaryContainer).</summary>
+public class HoloBadge : TonalPill
 {
     public static readonly StyledProperty<string> TextProperty = AvaloniaProperty.Register<HoloBadge, string>(nameof(Text), "");
     public static readonly StyledProperty<string> IconProperty = AvaloniaProperty.Register<HoloBadge, string>(nameof(Icon), "★");
@@ -422,107 +349,31 @@ public class HoloBadge : Panel
     public string Icon { get => GetValue(IconProperty); set => SetValue(IconProperty, value); }
     public bool Reverse { get => GetValue(ReverseProperty); set => SetValue(ReverseProperty, value); }
 
-    private static readonly Color[] Holo =
-    {
-        Color.FromRgb(0x1F, 0xC2, 0xB2), Color.FromRgb(0x7C, 0x8C, 0xFF), Color.FromRgb(0xE5, 0x8F, 0xD0),
-        Color.FromRgb(0xF4, 0xC2, 0x7A), Color.FromRgb(0x1F, 0xC2, 0xB2)
-    };
+    private readonly TextBlock _icon = Label(9, "OnTertiaryContainerBrush");
+    private readonly TextBlock _label = Label(9.5, "OnTertiaryContainerBrush");
 
-    private readonly TextBlock _label = new()
+    public HoloBadge() : base(22)
     {
-        FontWeight = FontWeight.ExtraBold, [!TextBlock.FontSizeProperty] = FontScale.For(10), Foreground = Brushes.White,
-        VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0)
-    };
-
-    public HoloBadge()
-    {
-        Height = 20;
-        VerticalAlignment = VerticalAlignment.Center;
-        Children.Add(new Shine(this));
-        Children.Add(_label);
-        UpdateText();
+        Row.Spacing = 5;
+        Row.Children.Add(_icon);
+        Row.Children.Add(_label);
+        Update();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == TextProperty || change.Property == IconProperty) UpdateText();
+        if (change.Property == TextProperty || change.Property == IconProperty || change.Property == ReverseProperty) Update();
     }
 
-    private void UpdateText() => _label.Text = string.IsNullOrEmpty(Icon) ? Text : $"{Icon} {Text}";
-
-    private sealed class Shine : AnimatedControl
+    private void Update()
     {
-        private readonly HoloBadge _owner;
-
-        public Shine(HoloBadge owner) => _owner = owner;
-
-        protected override double MotionDuration => 12;
-
-        public override void Render(DrawingContext ctx)
-        {
-            var rect = new Rect(Bounds.Size);
-            if (rect.Width <= 0) return;
-            var colors = _owner.Reverse ? Enumerable.Reverse(Holo).ToArray() : Holo;
-            var shift = Seconds / 4 % 1;
-            var brush = new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(-shift, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(2 - shift, 0, RelativeUnit.Relative),
-                SpreadMethod = GradientSpreadMethod.Repeat
-            };
-            for (var i = 0; i < colors.Length; i++) brush.GradientStops.Add(new GradientStop(colors[i], i / (double)(colors.Length - 1)));
-            var shape = new RoundedRect(rect, rect.Height / 2);
-            ctx.DrawRectangle(brush, null, shape);
-            if (MotionDone) return;
-            using (ctx.PushClip(shape))
-            {
-                var x = (Seconds / 3 % 1) * (rect.Width + 40) - 40;
-                ctx.DrawRectangle(new LinearGradientBrush
-                {
-                    StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                    EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-                    GradientStops =
-                    {
-                        new GradientStop(Color.FromArgb(0, 255, 255, 255), 0),
-                        new GradientStop(Color.FromArgb(178, 255, 255, 255), 0.5),
-                        new GradientStop(Color.FromArgb(0, 255, 255, 255), 1)
-                    }
-                }, null, new Rect(x, 0, 40, rect.Height));
-            }
-        }
-    }
-}
-
-/// <summary>Медленный диагональный блик по карточке подписки (раз в 6 с).</summary>
-public class SweepShine : AnimatedControl
-{
-    public SweepShine() => IsHitTestVisible = false;
-
-    protected override double MotionDuration => 6 * 3;
-
-    public override void Render(DrawingContext ctx)
-    {
-        var w = Bounds.Width;
-        var h = Bounds.Height;
-        if (w <= 0 || h <= 0 || MotionDone) return;
-        var t = Seconds % 6 / 2.2;
-        if (t > 1) return;
-        var band = w * 0.26;
-        var x = -band + (w + band * 2) * t;
-        using (ctx.PushTransform(Matrix.CreateTranslation(x, 0) * Matrix.CreateRotation(-20 * Math.PI / 180)))
-        {
-            ctx.DrawRectangle(new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-                GradientStops =
-                {
-                    new GradientStop(Color.FromArgb(0, 255, 255, 255), 0),
-                    new GradientStop(Color.FromArgb(56, 255, 255, 255), 0.5),
-                    new GradientStop(Color.FromArgb(0, 255, 255, 255), 1)
-                }
-            }, null, new Rect(-band / 2, -h, band, h * 3));
-        }
+        _label.Text = Text;
+        _icon.Text = Icon;
+        _icon.IsVisible = !string.IsNullOrEmpty(Icon);
+        SetBackgroundKey(Reverse ? "PrimaryContainerBrush" : "TertiaryContainerBrush");
+        var fg = Reverse ? "OnPrimaryContainerBrush" : "OnTertiaryContainerBrush";
+        _icon[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(fg);
+        _label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(fg);
     }
 }

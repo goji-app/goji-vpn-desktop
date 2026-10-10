@@ -90,8 +90,7 @@
                     <StackPanel IsVisible="{Binding IsVerifySuccess}" HorizontalAlignment="Center" Margin="0,8">
                         <TextBlock Text="Готово!" FontWeight="SemiBold" FontSize="{s:Fs 22}" Foreground="{DynamicResource TealDeepBrush}" HorizontalAlignment="Center"/>
                         <TextBlock Classes="muted" Text="Почта подтверждена" FontSize="{s:Fs 12.5}" HorizontalAlignment="Center" Margin="0,4,0,22"/>
-                        <Border Width="88" Height="88" CornerRadius="44" Background="{DynamicResource TealBrush}" HorizontalAlignment="Center"
-                                BoxShadow="0 0 28 0 #B300A79B">
+                        <Border Width="88" Height="88" CornerRadius="44" Background="{DynamicResource TealBrush}" HorizontalAlignment="Center">
                             <Path Classes="icon white" Data="{StaticResource IconCheck}" Width="44" Height="44"/>
                         </Border>
                     </StackPanel>

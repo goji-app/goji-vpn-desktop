@@ -62,7 +62,6 @@
 
             <c:GlassPanel Grid.Row="1" Classes="card" CornerRadius="28" Tint="{DynamicResource TealTintBrush}" Margin="0,12,0,0">
                 <Panel>
-                    <c:SweepShine/>
                     <StackPanel Margin="16">
                         <Grid ColumnDefinitions="Auto,*,Auto">
                             <c:DaysRing Days="{Binding DaysLeft}"/>
@@ -83,7 +82,7 @@
                         </Grid>
                         <Button Classes="accent" Margin="0,12,0,0" Command="{Binding OpenRenewCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Продлить" FontSize="{s:Fs 14}" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                                <TextBlock Text="Продлить" FontSize="{s:Fs 14}" FontWeight="Bold" Foreground="{DynamicResource SurfaceBrush}" VerticalAlignment="Center"/>
                                 <Path Classes="icon white" Data="{StaticResource IconNorthEast}" Width="13" Height="13" Margin="7,0,0,0"/>
                             </StackPanel>
                         </Button>
@@ -207,7 +206,7 @@
                                 </Button>
                                 <Button Grid.Column="2" Classes="bare" Command="{Binding CopyReferralLinkCommand}" VerticalAlignment="Center">
                                     <Border Height="32" Padding="12,0" CornerRadius="16" Background="{DynamicResource AccentGradientBrush}">
-                                        <TextBlock Text="Копировать" FontWeight="Bold" FontSize="{s:Fs 11.5}" Foreground="White" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Копировать" FontWeight="Bold" FontSize="{s:Fs 11.5}" Foreground="{DynamicResource SurfaceBrush}" VerticalAlignment="Center"/>
                                     </Border>
                                 </Button>
                             </Grid>

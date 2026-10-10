@@ -20,6 +20,20 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
     private readonly VpnEngine _vpnEngine;
     private readonly SubscriptionRepository _subscription;
     private readonly DispatcherTimer _speedTimer;
+    private readonly DispatcherTimer _qualityTimer;
+    private readonly Queue<int> _qualitySamples = new();
+    private bool _qualityWarmedUp;
+    private int _journalTick;
+
+    // Замер качества идёт по обычному маршруту системы — пока VPN включён, это и есть туннель.
+    // Один клиент на всё время: соединение переиспользуется, и замер показывает задержку канала,
+    // а не каждый раз заново TLS-рукопожатие.
+    private static readonly System.Net.Http.HttpClient ProbeClient = new(new System.Net.Http.SocketsHttpHandler
+    {
+        UseProxy = false,
+        ConnectTimeout = TimeSpan.FromSeconds(5),
+        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2)
+    }) { Timeout = TimeSpan.FromSeconds(5) };
 
     private long _lastRx;
     private long _lastTx;
@@ -55,6 +69,33 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
     [ObservableProperty] private double trafficFraction;
     [ObservableProperty] private bool showTrafficBar;
 
+    // ── Плитки «Главной» M3 Expressive (порт Android ConnectScreen 1.0.117 / b3c3350) ──
+    private const int SpeedHistorySize = 30;
+    private const int QualityWindow = 6;
+    private readonly List<double> _downHistory = new();
+    private readonly List<double> _upHistory = new();
+
+    /// <summary>Скорость за последние ~30 с (МБ/с) — для мини-графика на плитке скорости.</summary>
+    [ObservableProperty] private IReadOnlyList<double> downHistory = Array.Empty<double>();
+    [ObservableProperty] private IReadOnlyList<double> upHistory = Array.Empty<double>();
+
+    /// <summary>Качество канала: оценка «—»/0..100, словесная оценка, пинг и потери; Level —
+    /// excellent/good/fair/poor/none для цвета цифры.</summary>
+    [ObservableProperty] private string qualityValue = "—";
+    [ObservableProperty] private string qualityLabel = "";
+    [ObservableProperty] private string qualityDetail = "Подключись — и покажем";
+    [ObservableProperty] private string qualityLevel = "none";
+
+    /// <summary>Подписка: «17 дней», сколько из 5 полосок заполнено, их цвет (ok/warm/danger) и
+    /// строка «до 14 октября · трафик».</summary>
+    [ObservableProperty] private string subDaysLabel = "0 дней";
+    [ObservableProperty] private int subBars;
+    [ObservableProperty] private string subBarLevel = "danger";
+    [ObservableProperty] private string subDetail = "";
+
+    /// <summary>Строка журнала сети в карточке узла.</summary>
+    [ObservableProperty] private string journalLine = "Сегодня VPN ещё не включался";
+
     [ObservableProperty] private string downSpeedLabel = "0,0";
     [ObservableProperty] private string upSpeedLabel = "0,0";
     [ObservableProperty] private string connectedTimeLabel = "00:00:00";
@@ -69,14 +110,23 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void OpenTraffic() => NavigateToPlansRequested?.Invoke();
 
+    /// <summary>Открыть «Журнал сети» (Настройки → Подключение).</summary>
+    public event Action? OpenJournalRequested;
+
+    [RelayCommand]
+    private void OpenJournal() => OpenJournalRequested?.Invoke();
+
     /// <summary>Быстрая смена узла с Главной (Android 38457d4): строка узла открывает "Серверы".</summary>
     [RelayCommand]
     private void OpenServers() => NavigateToServersRequested?.Invoke();
 
-    public ConnectViewModel(VpnEngine vpnEngine, SubscriptionRepository subscription)
+    private readonly PingSettings _pingSettings;
+
+    public ConnectViewModel(VpnEngine vpnEngine, SubscriptionRepository subscription, PingSettings pingSettings)
     {
         _vpnEngine = vpnEngine;
         _subscription = subscription;
+        _pingSettings = pingSettings;
 
         _vpnEngine.PropertyChanged += OnVpnEnginePropertyChanged;
         _subscription.PropertyChanged += OnSubscriptionPropertyChanged;
@@ -85,6 +135,9 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
 
         _speedTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _speedTimer.Tick += (_, _) => SampleSpeed();
+        _qualityTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+        _qualityTimer.Tick += async (_, _) => await ProbeQualityAsync();
+        NetworkJournal.Changed += OnJournalChanged;
 
         RefreshFromState();
         RefreshNetwork();
@@ -203,6 +256,12 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
         ShowTrafficBar = !unlimited;
         TrafficExpiryLabel = $"Подписка до {ExpiryLabel} · осталось {DaysLeft} {RuPlural.Days(DaysLeft)}";
 
+        SubDaysLabel = $"{DaysLeft} {RuPlural.Days(DaysLeft)}";
+        SubBars = SubscriptionBars(DaysLeft);
+        SubBarLevel = DaysLeft < 3 ? "danger" : DaysLeft < 7 ? "warm" : "ok";
+        SubDetail = $"до {ExpiryLabel} · {TrafficValueLabel}";
+        RefreshJournalLine();
+
         if (IsConnected)
         {
             var counters = _vpnEngine.ReadAdapterCounters();
@@ -210,14 +269,33 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
             _lastTx = counters?.TxBytes ?? 0;
             _lastSampleUtc = DateTime.UtcNow;
             if (!_speedTimer.IsEnabled) _speedTimer.Start();
+            if (!_qualityTimer.IsEnabled)
+            {
+                _qualityTimer.Start();
+                QualityDetail = "Измеряем…";
+                _ = ProbeQualityAsync();
+            }
         }
         else
         {
             _speedTimer.Stop();
+            _qualityTimer.Stop();
+            _qualitySamples.Clear();
+            _qualityWarmedUp = false;
+            QualityValue = "—";
+            QualityLabel = "";
+            QualityLevel = "none";
+            QualityDetail = "Подключись — и покажем";
+            _downHistory.Clear();
+            _upHistory.Clear();
+            DownHistory = Array.Empty<double>();
+            UpHistory = Array.Empty<double>();
             DownSpeedLabel = "0,0";
             UpSpeedLabel = "0,0";
             ConnectedTimeLabel = "00:00:00";
         }
+
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_DEMO") == "1") FillPreviewDemo();
     }
 
     private void SampleSpeed()
@@ -231,6 +309,10 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
             var up = Math.Max(counters.Value.TxBytes - _lastTx, 0) / dt / 1_000_000.0;
             DownSpeedLabel = down.ToString("0.0", Ru);
             UpSpeedLabel = up.ToString("0.0", Ru);
+            Push(_downHistory, down);
+            Push(_upHistory, up);
+            DownHistory = _downHistory.ToArray();
+            UpHistory = _upHistory.ToArray();
             _lastRx = counters.Value.RxBytes;
             _lastTx = counters.Value.TxBytes;
         }
@@ -242,11 +324,116 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
             var elapsed = now - since.Value;
             ConnectedTimeLabel = $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
         }
+        // Время под защитой в строке журнала растёт — раз в минуту пересчитываем.
+        if (++_journalTick % 60 == 0) RefreshJournalLine();
+    }
+
+    /// <summary>Только для превью-экземпляра (GODJI_UI_PREVIEW_DEMO=1) — сверка заполненных плиток
+    /// «Главной» без настоящего подключения. В обычной работе не вызывается.</summary>
+    private void FillPreviewDemo()
+    {
+        var wave = Enumerable.Range(0, SpeedHistorySize).Select(i => 4 + 3 * Math.Sin(i / 3.0) + (i % 5) * 0.6).ToArray();
+        DownHistory = wave;
+        UpHistory = wave.Select(v => v * 0.25).ToArray();
+        DownSpeedLabel = wave[^1].ToString("0.0", Ru);
+        UpSpeedLabel = (wave[^1] * 0.25).ToString("0.0", Ru);
+        QualityValue = "92";
+        QualityLabel = "отлично";
+        QualityLevel = "excellent";
+        QualityDetail = "Пинг 48 мс · потерь нет";
+        SubDaysLabel = "17 дней";
+        SubBars = 3;
+        SubBarLevel = "ok";
+        SubDetail = "до 14 октября · 12,4 ГБ / ∞";
+    }
+
+    private static void Push(List<double> history, double value)
+    {
+        history.Add(value);
+        if (history.Count > SpeedHistorySize) history.RemoveAt(0);
+    }
+
+    /// <summary>Сколько из 5 «полосок» остатка подписки заполнено — как индикатор сигнала
+    /// (subscriptionBars в Android).</summary>
+    private static int SubscriptionBars(int days) => days switch
+    {
+        >= 90 => 5,
+        >= 30 => 4,
+        >= 14 => 3,
+        >= 7 => 2,
+        >= 1 => 1,
+        _ => 0
+    };
+
+    /// <summary>Оценка канала 0..100: задержка до 150 мс — 100, к 900 мс линейно падает до 35;
+    /// каждые 10% потерь — минус 5. Все замеры неудачны — 0 (qualityScore в Android).</summary>
+    private static int QualityScore(int? rttMs, int lossPct)
+    {
+        if (rttMs == null) return 0;
+        var baseScore = rttMs <= 150 ? 100.0 : rttMs >= 900 ? 35.0 : 100.0 - (rttMs.Value - 150) * 65.0 / 750.0;
+        return Math.Clamp((int)(baseScore - lossPct * 0.5), 0, 100);
+    }
+
+    /// <summary>Замер раз в 10 с, пока VPN подключён: GET адреса проверки пинга через туннель.
+    /// Первый удачный замер — с TLS-рукопожатием, он не показателен: пропускаем его.</summary>
+    private async Task ProbeQualityAsync()
+    {
+        if (!IsConnected) return;
+        var ms = -1;
+        try
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            using var response = await ProbeClient.GetAsync(_pingSettings.TestUrl, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
+            if ((int)response.StatusCode is >= 200 and < 400) ms = (int)sw.ElapsedMilliseconds;
+        }
+        catch { /* потеря — учтётся как неудачный замер */ }
+        if (!IsConnected) return;
+        if (!_qualityWarmedUp && ms >= 0)
+        {
+            _qualityWarmedUp = true;
+            _ = Task.Delay(300).ContinueWith(_ => RunOnUiThread(() => _ = ProbeQualityAsync()));
+            return;
+        }
+        _qualityWarmedUp = true;
+        _qualitySamples.Enqueue(ms);
+        while (_qualitySamples.Count > QualityWindow) _qualitySamples.Dequeue();
+
+        var ok = _qualitySamples.Where(x => x >= 0).OrderBy(x => x).ToList();
+        var loss = (_qualitySamples.Count - ok.Count) * 100 / Math.Max(1, _qualitySamples.Count);
+        int? rtt = ok.Count > 0 ? ok[ok.Count / 2] : null;
+        var score = QualityScore(rtt, loss);
+        QualityValue = score.ToString(Ru);
+        (QualityLabel, QualityLevel) = score switch
+        {
+            >= 85 => ("отлично", "excellent"),
+            >= 65 => ("хорошо", "good"),
+            >= 45 => ("средне", "fair"),
+            _ => ("плохо", "poor")
+        };
+        QualityDetail = rtt is { } r
+            ? (loss == 0 ? $"Пинг {r} мс · потерь нет" : $"Пинг {r} мс · потери {loss}%")
+            : "Сервер не отвечает";
+    }
+
+    private void OnJournalChanged() => RunOnUiThread(RefreshJournalLine);
+
+    /// <summary>«Сегодня под защитой 2 ч 10 мин · последнее событие 14:05».</summary>
+    private void RefreshJournalLine()
+    {
+        var events = NetworkJournal.Events;
+        var day = NetworkJournal.DayOf(events, 0, _vpnEngine.IsRunning);
+        var minutes = (long)day.Protected.TotalMinutes;
+        var head = minutes > 0
+            ? $"Сегодня под защитой {(minutes >= 60 ? $"{minutes / 60} ч {minutes % 60} мин" : $"{minutes} мин")}"
+            : "Сегодня VPN ещё не включался";
+        JournalLine = events.Count > 0 ? $"{head} · последнее событие {events[^1].At.ToLocalTime():HH:mm}" : head;
     }
 
     public void Dispose()
     {
         _speedTimer.Stop();
+        _qualityTimer.Stop();
+        NetworkJournal.Changed -= OnJournalChanged;
         _vpnEngine.PropertyChanged -= OnVpnEnginePropertyChanged;
         _subscription.PropertyChanged -= OnSubscriptionPropertyChanged;
         NetworkChange.NetworkAddressChanged -= OnNetworkChanged;
