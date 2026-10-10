@@ -254,10 +254,13 @@ public sealed class ApiClient
     // токеном было бы отвергнуто и ложно выкинуло бы пользователя на экран входа.
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
 
-    private void RaiseSessionExpired()
+    private void RaiseSessionExpired(string? usedToken)
     {
-        // Без токена 401 — норма (пользователь уже вышел), это не «истекла сессия».
-        if (string.IsNullOrEmpty(_tokenStore.AccessToken)) return;
+        // Без токена 401 — норма (пользователь уже вышел), это не «истекла сессия». А если
+        // параллельный запрос за это время уже продлил сессию, этот устаревший 401 не должен
+        // выкидывать на экран входа со свежим токеном (порт Android 955fd69).
+        var current = _tokenStore.AccessToken;
+        if (string.IsNullOrEmpty(current) || current != usedToken) return;
         SessionExpired?.Invoke();
     }
 
@@ -282,7 +285,8 @@ public sealed class ApiClient
         {
             // Пока ждали своей очереди, сессию уже продлил параллельный запрос — просто повторяем.
             refreshed = _tokenStore.AccessToken != sentToken ||
-                        (_tokenStore.RefreshToken is { } refreshToken && await RefreshSessionAsync(refreshToken, ct).ConfigureAwait(false));
+                        (_tokenStore.RefreshToken is { } refreshToken &&
+                         await RefreshSessionAsync(refreshToken, ct).ConfigureAwait(false) == RefreshOutcome.Refreshed);
         }
         finally
         {
@@ -290,13 +294,14 @@ public sealed class ApiClient
         }
         if (!refreshed)
         {
-            RaiseSessionExpired();
+            RaiseSessionExpired(sentToken);
             return response; // не получилось обновить — отдаём исходный 401 как есть
         }
 
         response.Dispose();
+        var retryToken = _tokenStore.AccessToken;
         var retried = await SendWithDirectFallbackAsync(requestFactory, ct).ConfigureAwait(false); // подхватит уже обновлённый _tokenStore.AccessToken
-        if (retried.StatusCode == HttpStatusCode.Unauthorized) RaiseSessionExpired();
+        if (retried.StatusCode == HttpStatusCode.Unauthorized) RaiseSessionExpired(retryToken);
         return retried;
     }
 
@@ -323,32 +328,55 @@ public sealed class ApiClient
         }
     }
 
+    private enum RefreshOutcome { Refreshed, Rejected }
+
     /// <summary>Без Authorization (сессия уже мертва) — только Cookie с refresh-токеном, как у
-    /// веб-версии сайта. Сохраняет новый access- и (если бэкенд его ротирует) refresh-токен в
-    /// TokenStore при успехе; при неудаче ничего не меняет — вызывающий SendWithRefreshAsync
-    /// просто вернёт исходный 401, и пользователя в итоге перекинет на экран входа.</summary>
-    private async Task<bool> RefreshSessionAsync(string refreshToken, CancellationToken ct)
+    /// веб-версии сайта. При успехе сохраняет новый access- и (если бэкенд его ротирует)
+    /// refresh-токен. Rejected — только когда refresh-токен действительно отвергнут (400/401):
+    /// сессия мертва, пора на экран входа. Сбой сети, 409 без новой сессии (сайт считает его
+    /// «уже обновлено параллельно»), 429, 5xx и ошибки CDN — временные: бросается
+    /// HttpRequestException, запрос падает как обычная сетевая ошибка, а пользователя НЕ
+    /// разлогинивает — сессия продлится при следующем запросе (порт Android 955fd69).</summary>
+    private async Task<RefreshOutcome> RefreshSessionAsync(string refreshToken, CancellationToken ct)
     {
-        try
+        HttpRequestMessage Build()
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, "api/auth/refresh") { Content = new StringContent("") };
+            var request = new HttpRequestMessage(HttpMethod.Post, "api/auth/refresh") { Content = new StringContent("") };
             request.Headers.Add("Cookie", $"rw_refresh_token={refreshToken}");
             request.Headers.Add("X-Requested-With", "XMLHttpRequest");
-            using var response = await _http.SendAsync(request, ct).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode) return false;
-
-            var newToken = ExtractCookieValue(response, "rw_session_token");
-            if (newToken == null) return false;
-            _tokenStore.Save(newToken);
-            // Ротация refresh-токена — если бэкенд не прислал новый, оставляем прежний (мог
-            // быть выдан на длительный срок и не ротируется на каждое обновление).
-            if (ExtractCookieValue(response, "rw_refresh_token") is { } newRefreshToken)
-                _tokenStore.SaveRefreshToken(newRefreshToken);
-            return true;
+            return request;
         }
-        catch
+
+        HttpResponseMessage response;
+        using (var request = Build())
         {
-            return false;
+            try
+            {
+                response = await _http.SendAsync(request, ct).ConfigureAwait(false);
+            }
+            catch (HttpRequestException) when (VpnEngine.Current?.IsRunning == true)
+            {
+                // Как и у обычных запросов: сбой на выходном узле туннеля — пробуем напрямую.
+                using var direct = Build();
+                response = await _directHttp.SendAsync(direct, ct).ConfigureAwait(false);
+            }
+        }
+
+        using (response)
+        {
+            var newToken = ExtractCookieValue(response, "rw_session_token");
+            if ((response.IsSuccessStatusCode || (int)response.StatusCode == 409) && newToken != null)
+            {
+                _tokenStore.Save(newToken);
+                // Ротация refresh-токена — если бэкенд не прислал новый, оставляем прежний (мог
+                // быть выдан на длительный срок и не ротируется на каждое обновление).
+                if (ExtractCookieValue(response, "rw_refresh_token") is { } newRefreshToken)
+                    _tokenStore.SaveRefreshToken(newRefreshToken);
+                return RefreshOutcome.Refreshed;
+            }
+            if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized)
+                return RefreshOutcome.Rejected;
+            throw new HttpRequestException($"Не удалось продлить сессию: HTTP {(int)response.StatusCode}");
         }
     }
 

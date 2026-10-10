@@ -130,6 +130,10 @@ public partial class App : Application
 
         window.Show();
 
+        // Входы через сайт, сделанные до исправления, сохранены без refresh-токена — разово
+        // забираем его из хранилища кук WebView2 (см. WebRefreshTokenRecovery).
+        _ = WebRefreshTokenRecovery.TryRecoverAsync(tokenStore, window);
+
         // godjivpn:// раньше был нужен только для возврата OAuth-кода из системного браузера
         // (native-exchange, сломан на бэкенде 7.1.0 — см. LoginViewModel.OpenWebLoginAsync,
         // заменён на встроенное окно веб-входа). Регистрация схемы в реестре (были

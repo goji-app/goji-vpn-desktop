@@ -12,6 +12,7 @@ namespace GodjiVpn.Views;
 public partial class WebLoginWindow : Window
 {
     private const string SiteUrl = "https://gojihub.xyz/";
+    private const string RefreshUrl = "https://gojihub.xyz/api/auth/refresh";
     private const string SessionCookieName = "rw_session_token";
     private const string RefreshCookieName = "rw_refresh_token";
 
@@ -90,9 +91,22 @@ public partial class WebLoginWindow : Window
         var cookie = cookies.FirstOrDefault(c => c.Name == SessionCookieName);
         if (cookie == null || string.IsNullOrWhiteSpace(cookie.Value)) return;
 
+        // Refresh-кука выставлена с Path=/api/auth, поэтому в куках корня сайта её НЕТ —
+        // спрашиваем по URL обновления. Раньше из-за этого вход через сайт сохранялся без
+        // refresh-токена и ровно через сутки сессия кончалась (порт Android 955fd69).
+        string? refresh = null;
+        try
+        {
+            var refreshCookies = await Web.CoreWebView2.CookieManager.GetCookiesAsync(RefreshUrl);
+            refresh = refreshCookies.FirstOrDefault(c => c.Name == RefreshCookieName)?.Value;
+        }
+        catch { /* окно закрывают — ниже всё равно выйдем */ }
+        // Снова после await — та же гонка таймера/навигации/закрытия окна, что описана выше.
+        if (_handled || _closed) return;
+
         _handled = true;
         SessionToken = cookie.Value;
-        RefreshToken = cookies.FirstOrDefault(c => c.Name == RefreshCookieName)?.Value;
+        RefreshToken = refresh ?? cookies.FirstOrDefault(c => c.Name == RefreshCookieName)?.Value;
         DialogResult = true;
         Close();
     }
