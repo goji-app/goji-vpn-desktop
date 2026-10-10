@@ -51,12 +51,17 @@ public sealed class TokenStore
 
     public bool IsLoggedIn => !string.IsNullOrEmpty(AccessToken);
 
-    public void Clear()
+/// <summary>Сессия очищена (выход из аккаунта или истёкшая сессия) — SubscriptionRepository
+    /// забывает данные прежнего аккаунта, см. App.</summary>
+    public event Action? Cleared;
+
+        public void Clear()
     {
         _cachedToken = null;
         _cachedRefreshToken = null;
         _loaded = true;
         if (File.Exists(StorePath)) File.Delete(StorePath);
+        Cleared?.Invoke();
     }
 
     private void Persist()

@@ -99,6 +99,9 @@ public partial class App : Application
         var settingsViewModel = new SettingsViewModel(tokenStore, vpnEngine, hwidProvider, pingSettings, themeService, updateService, apiClient, appSettings, networkRules);
         var shellViewModel = new ShellViewModel(connectViewModel, serversViewModel, plansViewModel, settingsViewModel);
         var mainViewModel = new MainViewModel(tokenStore, loginViewModel, shellViewModel);
+        // Выход из аккаунта или истёкшая сессия — забыть подписку, новости и серверы прежнего
+        // аккаунта (и на диске, см. AccountCache).
+        tokenStore.Cleared += subscriptionRepository.ClearAccount;
         apiClient.SessionExpired += () => Dispatcher.BeginInvoke(mainViewModel.HandleSessionExpired);
 
         var window = new MainWindow { DataContext = mainViewModel };

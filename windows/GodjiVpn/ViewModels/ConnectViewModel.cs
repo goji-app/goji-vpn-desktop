@@ -93,7 +93,9 @@ public sealed partial class ConnectViewModel : ObservableObject, IDisposable
 
     public async Task LoadAsync()
     {
-        await _subscription.RefreshAsync();
+        // При запуске серверов ещё нет — обновление пойдёт сразу; после повторного входа в
+        // приложение свежая (меньше часа) подписка заново не запрашивается.
+        await _subscription.RefreshIfStaleAsync();
         RefreshFromState();
     }
 

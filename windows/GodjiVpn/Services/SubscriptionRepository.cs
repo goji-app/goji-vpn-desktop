@@ -17,7 +17,9 @@ public sealed class SubscriptionRepository : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    private Models.SubscriptionInfo? _subscription;
+    // Последняя известная подписка с диска (AccountCache) — «Главная» и «Подписка» показывают её
+    // сразу после запуска, не дожидаясь сети.
+    private Models.SubscriptionInfo? _subscription = AccountCache.Load<Models.SubscriptionInfo>(AccountCache.Key.Subscription)?.Value;
     public Models.SubscriptionInfo? Subscription
     {
         get => _subscription;
@@ -82,10 +84,10 @@ public sealed class SubscriptionRepository : INotifyPropertyChanged
     }
 
     /// <summary>Новости/рассылки (см. ApiClient.GetBroadcastsAsync) — та же страница, что
-    /// "Мои рассылки" веб-версии. Не персистится на диск: список короткий, лишний раз сходить
-    /// в сеть при следующем запуске не накладно, а устаревшие новости в офлайн-кэше приносили
-    /// бы больше путаницы, чем пользы.</summary>
-    private IReadOnlyList<BroadcastDto> _broadcasts = Array.Empty<BroadcastDto>();
+    /// "Мои рассылки" веб-версии. Тоже с диска (AccountCache): без этого раздел новостей на
+    /// «Подписке» пустовал при каждом запуске без сети.</summary>
+    private IReadOnlyList<BroadcastDto> _broadcasts =
+        AccountCache.Load<List<BroadcastDto>>(AccountCache.Key.Broadcasts)?.Value ?? (IReadOnlyList<BroadcastDto>)Array.Empty<BroadcastDto>();
     public IReadOnlyList<BroadcastDto> Broadcasts
     {
         get => _broadcasts;
@@ -102,8 +104,61 @@ public sealed class SubscriptionRepository : INotifyPropertyChanged
 
     public VlessNode? SelectedNode => Nodes.FirstOrDefault(n => n.Id == SelectedId);
 
+    // Автоматические обновления (запуск, открытие вкладок) — не чаще раза в час: часовой таймер
+    // App и так обновляет подписку, а кнопки «обновить» — сразу (RefreshAsync). Одновременные
+    // вызовы склеиваются в один.
+    private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromHours(1);
+    private readonly SemaphoreSlim _refreshGate = new(1, 1);
+    private DateTime _lastOkRefreshUtc = DateTime.MinValue;
+
+    /// <summary>Данные прежнего аккаунта стёрты (выход/истёкшая сессия) — вкладки сбрасывают
+    /// то, что показывали.</summary>
+    public event Action? AccountCleared;
+
+    /// <summary>Обновление, если с последнего удачного прошло больше часа или серверов ещё нет
+    /// (список узлов на диске не хранится — после запуска его нужно получить).</summary>
+    public async Task<bool> RefreshIfStaleAsync()
+    {
+        await _refreshGate.WaitAsync();
+        try
+        {
+            if (_subscriptionNodes.Count > 0 && DateTime.UtcNow - _lastOkRefreshUtc < AutoRefreshInterval) return true;
+            return await RefreshUnlockedAsync();
+        }
+        finally { _refreshGate.Release(); }
+    }
+
     /// <returns>true, если подписку удалось реально получить с бэкенда.</returns>
     public async Task<bool> RefreshAsync()
+    {
+        await _refreshGate.WaitAsync();
+        try { return await RefreshUnlockedAsync(); }
+        finally { _refreshGate.Release(); }
+    }
+
+    /// <summary>Выход из аккаунта: забыть подписку, новости и серверы прежнего аккаунта — и на
+    /// диске, и в памяти, чтобы следующий вошедший не увидел их до первого обновления.</summary>
+    public void ClearAccount()
+    {
+        AccountCache.Clear();
+        _lastOkRefreshUtc = DateTime.MinValue;
+        _subscriptionNodes = Array.Empty<VlessNode>();
+        Subscription = null;
+        Broadcasts = Array.Empty<BroadcastDto>();
+        LastError = null;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Nodes)));
+        AccountCleared?.Invoke();
+    }
+
+    private async Task<bool> RefreshUnlockedAsync()
+    {
+        var ok = await RefreshCoreAsync();
+        // Неудачную попытку не запоминаем: следующее открытие вкладки попробует снова.
+        if (ok) _lastOkRefreshUtc = DateTime.UtcNow;
+        return ok;
+    }
+
+    private async Task<bool> RefreshCoreAsync()
     {
         Models.SubscriptionsResponse subsResponse;
         try
@@ -149,7 +204,11 @@ public sealed class SubscriptionRepository : INotifyPropertyChanged
         // Не завязано на наличие активной подписки — новости могут быть релевантны и до
         // покупки тарифа. Отдельная от подписки/серверов ошибка не должна прерывать остальной
         // RefreshAsync, поэтому просто отбрасывается.
-        try { Broadcasts = await _api.GetBroadcastsAsync(); }
+        try
+        {
+            Broadcasts = await _api.GetBroadcastsAsync();
+            AccountCache.Save(AccountCache.Key.Broadcasts, Broadcasts);
+        }
         catch { /* новости не критичны для основного функционала */ }
 
         var active = subsResponse.Subscriptions.FirstOrDefault(s => s.IsPrimary)
@@ -164,7 +223,11 @@ public sealed class SubscriptionRepository : INotifyPropertyChanged
             catch { /* не критично — попробуем на следующем RefreshAsync */ }
         }
 
+        // Сюда доходим, только если кабинет реально ответил: при сбое запроса (catch выше) прежняя
+        // подписка остаётся на экране. null — только если подписок у аккаунта действительно нет.
         Subscription = active;
+        if (active != null) AccountCache.Save(AccountCache.Key.Subscription, active);
+        else AccountCache.Remove(AccountCache.Key.Subscription);
         if (active == null)
         {
             LastError = subsResponse.Subscriptions.Count == 0
