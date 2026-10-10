@@ -37,7 +37,7 @@ public class SegmentedControl : UserControl
         _thumb.BorderThickness = new Thickness(1);
         _thumb.SetResourceReference(Border.BackgroundProperty, "ThumbBrush");
         _thumb.SetResourceReference(Border.BorderBrushProperty, "CardBorderBrush");
-        _thumb.Effect = new DropShadowEffect { BlurRadius = 8, ShadowDepth = 1, Opacity = 0.12, Direction = 270 };
+        // M3: выбранный сегмент — плоская заливка secondaryContainer, без тени.
         _root.Children.Add(_thumb);
         _root.Children.Add(_cells);
         BuildTrack();

@@ -53,11 +53,9 @@
                 </Button>
             </Grid>
 
-            <!-- Карточка подписки: тил-тонированное стекло r28, кольцо дней, тариф, АКТИВНА,
-                 "Продлить ↗" с акцентным градиентом и медленный блик gg-sweep. -->
+            <!-- Карточка подписки: primaryContainer r28, кольцо дней, тариф, АКТИВНА, «Продлить ↗». -->
             <controls:GlassPanel Grid.Row="1" Style="{StaticResource GlassCard}" CornerRadius="28" Tint="{DynamicResource TealTintBrush}" Margin="0,12,0,0">
                 <Grid>
-                    <controls:SweepShine/>
                     <StackPanel Margin="16">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -85,8 +83,8 @@
                         </Grid>
                         <Button Style="{StaticResource AccentPillButton}" Margin="0,12,0,0" Command="{Binding OpenRenewCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Продлить" FontSize="{s:Fs 14}" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                                <Path Data="{StaticResource IconNorthEast}" Style="{StaticResource Icon}" Width="13" Height="13" Fill="White" Margin="7,0,0,0"/>
+                                <TextBlock Text="Продлить" FontSize="{s:Fs 14}" FontWeight="Bold" Foreground="{DynamicResource SurfaceBrush}" VerticalAlignment="Center"/>
+                                <Path Data="{StaticResource IconNorthEast}" Style="{StaticResource Icon}" Width="13" Height="13" Fill="{DynamicResource SurfaceBrush}" Margin="7,0,0,0"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -155,7 +153,7 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource TerracottaBrush}">
-                                <Path Data="{StaticResource IconChat}" Style="{StaticResource Icon}" Width="16" Height="16" Fill="White"/>
+                                <Path Data="{StaticResource IconChat}" Style="{StaticResource Icon}" Width="16" Height="16" Fill="{DynamicResource SurfaceBrush}"/>
                             </Border>
                             <TextBlock Grid.Column="1" Text="Остались проблемы или что-то не работает? Напиши в поддержку."
                                        FontWeight="SemiBold" FontSize="{s:Fs 12}" LineHeight="{s:Fs 16.8}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="12,0,0,0"/>
@@ -280,7 +278,7 @@
                                 </Button>
                                 <Button Grid.Column="2" Style="{StaticResource BareButton}" Command="{Binding CopyReferralLinkCommand}" VerticalAlignment="Center">
                                     <controls:PillBorder Height="32" Padding="12,0" Background="{DynamicResource AccentGradientBrush}">
-                                        <TextBlock Text="Копировать" FontWeight="Bold" FontSize="{s:Fs 11.5}" Foreground="White" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Копировать" FontWeight="Bold" FontSize="{s:Fs 11.5}" Foreground="{DynamicResource SurfaceBrush}" VerticalAlignment="Center"/>
                                     </controls:PillBorder>
                                 </Button>
                             </Grid>

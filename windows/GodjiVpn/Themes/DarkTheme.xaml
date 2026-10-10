@@ -2,92 +2,115 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <!-- Дизайн v5 «Стекло», тёмная тема — 1:1 с Android GodjiColors.applyDark() (Color.kt).
-         Surface здесь тёмный: в экранах это цвет текста на акцентной/Ink-кнопке. -->
-    <SolidColorBrush x:Key="BgBrush" Color="Transparent"/>
-    <SolidColorBrush x:Key="BgSolidBrush" Color="#0C1320"/>
-    <SolidColorBrush x:Key="SurfaceBrush" Color="#0B1F1C"/>
-    <SolidColorBrush x:Key="SurfaceGlassBrush" Color="#14FFFFFF"/>
-    <SolidColorBrush x:Key="InkBrush" Color="#F1F7F6"/>
-    <SolidColorBrush x:Key="InkShadowBrush" Color="#C7CBD4"/>
-    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F5F7FA"/>
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#CCE8EEF4"/>
-    <SolidColorBrush x:Key="TextMutedBrush" Color="#99E8EEF4"/>
-    <SolidColorBrush x:Key="TealBrush" Color="#5FFFE6"/>
-    <Color x:Key="TealColor">#5FFFE6</Color>
-    <SolidColorBrush x:Key="TealBrightBrush" Color="#34E3D2"/>
-    <SolidColorBrush x:Key="TealDeepBrush" Color="#7FFFEA"/>
-    <SolidColorBrush x:Key="TealTintBrush" Color="#242FE0CF"/>
-    <SolidColorBrush x:Key="TealTintBorderBrush" Color="#595FFFE6"/>
-    <SolidColorBrush x:Key="TerracottaBrush" Color="#FF8E62"/>
-    <SolidColorBrush x:Key="TerracottaDeepBrush" Color="#FFB08E"/>
-    <SolidColorBrush x:Key="TerracottaTintBrush" Color="#6178321C"/>
-    <SolidColorBrush x:Key="TerracottaTintBorderBrush" Color="#24FFFFFF"/>
-    <SolidColorBrush x:Key="WarningBrush" Color="#E0A63C"/>
-    <SolidColorBrush x:Key="DangerBrush" Color="#FF7A66"/>
-    <SolidColorBrush x:Key="JamBgBrush" Color="#66782819"/>
-    <SolidColorBrush x:Key="JamBorderBrush" Color="#24FFFFFF"/>
-    <SolidColorBrush x:Key="JamTextBrush" Color="#FF8A6E"/>
-    <SolidColorBrush x:Key="CardBorderBrush" Color="#24FFFFFF"/>
-    <SolidColorBrush x:Key="CardBorderStrongBrush" Color="#24FFFFFF"/>
-    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#24FFFFFF"/>
-    <SolidColorBrush x:Key="ChipBrush" Color="#14FFFFFF"/>
-    <SolidColorBrush x:Key="TrackBgBrush" Color="#1FFFFFFF"/>
-    <SolidColorBrush x:Key="BorderTealBrush" Color="#262FE0CF"/>
+    <!-- «Goji Expressive» (Material 3 Expressive), тёмная тема — 1:1 с Android GodjiColors.applyDark() (Color.kt).
+         Тональные поверхности вместо стекла: без размытия, бликов, кромок и теней. Имена
+         ключей v5 сохранены, как и в Android, — экраны продолжают их читать, а значения
+         теперь роли M3: TextPrimary = onSurface, Teal = primary, TealTint = primaryContainer,
+         Chip = surfaceContainerHigh, Thumb/Lens = secondaryContainer, Surface = onPrimary
+         (текст на акценте). Поля, которые больше ничего не рисуют (блики, кромки, пятна
+         фона), прозрачные. BgBrush = Transparent — под экранами сплошной фон GlassBackdrop. -->
+    <SolidColorBrush x:Key="SurfaceBaseBrush" Color="#0E1513"/>
+    <SolidColorBrush x:Key="SurfaceContainerLowBrush" Color="#161D1C"/>
+    <SolidColorBrush x:Key="SurfaceContainerBrush" Color="#1A2120"/>
+    <SolidColorBrush x:Key="SurfaceContainerHighBrush" Color="#252B2A"/>
+    <SolidColorBrush x:Key="SurfaceContainerHighestBrush" Color="#2F3635"/>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#80D5CA"/>
+    <SolidColorBrush x:Key="OnPrimaryBrush" Color="#003732"/>
+    <SolidColorBrush x:Key="PrimaryContainerBrush" Color="#005049"/>
+    <SolidColorBrush x:Key="OnPrimaryContainerBrush" Color="#9DF2E6"/>
+    <SolidColorBrush x:Key="SecondaryContainerBrush" Color="#334B48"/>
+    <SolidColorBrush x:Key="OnSecondaryContainerBrush" Color="#CCE8E3"/>
+    <SolidColorBrush x:Key="TertiaryContainerBrush" Color="#7B2F12"/>
+    <SolidColorBrush x:Key="OnTertiaryContainerBrush" Color="#FFDBCF"/>
+    <SolidColorBrush x:Key="ErrorContainerBrush" Color="#93000A"/>
+    <SolidColorBrush x:Key="OutlineBrush" Color="#889391"/>
+    <SolidColorBrush x:Key="OutlineVariantBrush" Color="#3F4947"/>
+    <SolidColorBrush x:Key="BgBrush" Color="#00000000"/>
+    <SolidColorBrush x:Key="BgSolidBrush" Color="#0E1513"/>
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#003732"/>
+    <SolidColorBrush x:Key="SurfaceGlassBrush" Color="#252B2A"/>
+    <SolidColorBrush x:Key="InkBrush" Color="#DDE4E1"/>
+    <SolidColorBrush x:Key="InkShadowBrush" Color="#00000000"/>
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#DDE4E1"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#BEC9C6"/>
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#889391"/>
+    <SolidColorBrush x:Key="TealBrush" Color="#80D5CA"/>
+    <SolidColorBrush x:Key="TealBrightBrush" Color="#80D5CA"/>
+    <SolidColorBrush x:Key="TealDeepBrush" Color="#80D5CA"/>
+    <SolidColorBrush x:Key="TealTintBrush" Color="#005049"/>
+    <SolidColorBrush x:Key="TealTintBorderBrush" Color="#80D5CA"/>
+    <SolidColorBrush x:Key="TerracottaBrush" Color="#FFB59A"/>
+    <SolidColorBrush x:Key="TerracottaDeepBrush" Color="#FFDBCF"/>
+    <SolidColorBrush x:Key="TerracottaTintBrush" Color="#7B2F12"/>
+    <SolidColorBrush x:Key="TerracottaTintBorderBrush" Color="#00000000"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#F0BF48"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#FFB4AB"/>
+    <SolidColorBrush x:Key="JamBgBrush" Color="#93000A"/>
+    <SolidColorBrush x:Key="JamBorderBrush" Color="#00000000"/>
+    <SolidColorBrush x:Key="JamTextBrush" Color="#FFB4AB"/>
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#00000000"/>
+    <SolidColorBrush x:Key="CardBorderStrongBrush" Color="#00000000"/>
+    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#889391"/>
+    <SolidColorBrush x:Key="ChipBrush" Color="#252B2A"/>
+    <SolidColorBrush x:Key="TrackBgBrush" Color="#2F3635"/>
+    <SolidColorBrush x:Key="BorderTealBrush" Color="#80D5CA"/>
     <SolidColorBrush x:Key="PurpleBrush" Color="#8B5CFF"/>
-
-    <!-- Стекло v5 -->
-    <SolidColorBrush x:Key="HairBrush" Color="#1AFFFFFF"/>
-    <SolidColorBrush x:Key="SelBgBrush" Color="#172FE0CF"/>
-    <SolidColorBrush x:Key="ThumbBrush" Color="#29FFFFFF"/>
-    <SolidColorBrush x:Key="LensBrush" Color="#2EFFFFFF"/>
-    <SolidColorBrush x:Key="RingCoreBrush" Color="#E610141C"/>
-    <SolidColorBrush x:Key="InkBtnBrush" Color="#F1F7F6"/>
-    <SolidColorBrush x:Key="InkBtnTextBrush" Color="#0B1F1C"/>
+    <SolidColorBrush x:Key="HairBrush" Color="#2F3635"/>
+    <SolidColorBrush x:Key="SelBgBrush" Color="#334B48"/>
+    <SolidColorBrush x:Key="ThumbBrush" Color="#334B48"/>
+    <SolidColorBrush x:Key="LensBrush" Color="#334B48"/>
+    <SolidColorBrush x:Key="RingCoreBrush" Color="#1A2120"/>
+    <SolidColorBrush x:Key="InkBtnBrush" Color="#80D5CA"/>
+    <SolidColorBrush x:Key="InkBtnTextBrush" Color="#003732"/>
     <SolidColorBrush x:Key="PressedRowBrush" Color="#147F7F7F"/>
-    <SolidColorBrush x:Key="BannerOkBrush" Color="#61145A50"/>
-    <SolidColorBrush x:Key="BannerWarnBrush" Color="#666E2D19"/>
-    <SolidColorBrush x:Key="ConnectingDotBrush" Color="#E0A526"/>
-    <SolidColorBrush x:Key="OffDotBrush" Color="#59FFFFFF"/>
-    <Color x:Key="AccentGlowColor">#592FE0CF</Color>
+    <SolidColorBrush x:Key="BannerOkBrush" Color="#005049"/>
+    <SolidColorBrush x:Key="BannerWarnBrush" Color="#7B2F12"/>
+    <SolidColorBrush x:Key="ConnectingDotBrush" Color="#F0BF48"/>
+    <SolidColorBrush x:Key="OffDotBrush" Color="#889391"/>
+    <SolidColorBrush x:Key="PanelBrush" Color="#1A2120"/>
+    <SolidColorBrush x:Key="PanelAltBrush" Color="#252B2A"/>
+    <SolidColorBrush x:Key="BorderBrush" Color="#3F4947"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#80D5CA"/>
+    <SolidColorBrush x:Key="AccentDimBrush" Color="#80D5CA"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#DDE4E1"/>
+
+    <Color x:Key="TealColor">#80D5CA</Color>
+    <Color x:Key="PrimaryColor">#80D5CA</Color>
+    <Color x:Key="OnPrimaryColor">#003732</Color>
+    <Color x:Key="PrimaryContainerColor">#005049</Color>
+    <Color x:Key="TertiaryColor">#FFB59A</Color>
+    <Color x:Key="WarningColor">#F0BF48</Color>
+    <Color x:Key="DangerColor">#FFB4AB</Color>
+    <Color x:Key="OutlineVariantColor">#3F4947</Color>
+    <Color x:Key="TrackBgColor">#2F3635</Color>
+    <Color x:Key="AccentGlowColor">#00000000</Color>
+    <Color x:Key="GlassColor">#1A2120</Color>
+    <Color x:Key="GlassStrongColor">#252B2A</Color>
+    <Color x:Key="GlassFaintColor">#2F3635</Color>
+    <Color x:Key="GlassSpotColor">#00000000</Color>
+    <Color x:Key="GlassGlossColor">#00000000</Color>
+    <Color x:Key="RimAColor">#00000000</Color>
+    <Color x:Key="RimBColor">#00000000</Color>
+    <Color x:Key="RimCColor">#00000000</Color>
+    <Color x:Key="RimDColor">#00000000</Color>
+    <Color x:Key="InnerTopColor">#00000000</Color>
+    <Color x:Key="InnerBottomColor">#00000000</Color>
+    <Color x:Key="GlassShadowColor">#00000000</Color>
+    <Color x:Key="BaseTopColor">#0E1513</Color>
+    <Color x:Key="BaseMidColor">#0E1513</Color>
+    <Color x:Key="BaseBottomColor">#0E1513</Color>
+    <Color x:Key="Blob1Color">#00000000</Color>
+    <Color x:Key="Blob2Color">#00000000</Color>
+    <Color x:Key="Blob3Color">#00000000</Color>
+    <Color x:Key="Blob4Color">#00000000</Color>
+    <Color x:Key="TexLineColor">#00000000</Color>
+    <Color x:Key="TexDotColor">#00000000</Color>
+
+    <!-- Градиенты v5 сведены к плоскому primary — в M3E заливки однотонные. -->
     <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#34E3D2" Offset="0"/>
-        <GradientStop Color="#10B8A9" Offset="0.55"/>
-        <GradientStop Color="#079487" Offset="1"/>
+        <GradientStop Color="#80D5CA" Offset="0"/>
+        <GradientStop Color="#80D5CA" Offset="1"/>
     </LinearGradientBrush>
-
-    <!-- Рецепт стекла (GlassPanel, см. Controls/GlassPanel.cs) -->
-    <Color x:Key="GlassColor">#9E12161E</Color>
-    <Color x:Key="GlassStrongColor">#BD161A24</Color>
-    <Color x:Key="GlassFaintColor">#6612161E</Color>
-    <Color x:Key="GlassSpotColor">#12FFFFFF</Color>
-    <Color x:Key="GlassGlossColor">#12FFFFFF</Color>
-    <Color x:Key="RimAColor">#8CFFFFFF</Color>
-    <Color x:Key="RimBColor">#14FFFFFF</Color>
-    <Color x:Key="RimCColor">#05FFFFFF</Color>
-    <Color x:Key="RimDColor">#47FFFFFF</Color>
-    <Color x:Key="InnerTopColor">#47FFFFFF</Color>
-    <Color x:Key="InnerBottomColor">#80000000</Color>
-    <Color x:Key="GlassShadowColor">#590A0528</Color>
-
-    <!-- Фон (GlassBackdrop) -->
-    <Color x:Key="BaseTopColor">#080C12</Color>
-    <Color x:Key="BaseMidColor">#0C1320</Color>
-    <Color x:Key="BaseBottomColor">#06100F</Color>
-    <Color x:Key="Blob1Color">#0F8C80</Color>
-    <Color x:Key="Blob2Color">#4332A8</Color>
-    <Color x:Key="Blob3Color">#8A3D2A</Color>
-    <Color x:Key="Blob4Color">#1B4F8C</Color>
-    <sys:Double x:Key="BlobAlpha">0.32</sys:Double>
-    <Color x:Key="TexLineColor">#09A0DCE6</Color>
-    <Color x:Key="TexDotColor">#0FC8E6F0</Color>
-
-    <!-- Совместимость со старыми именами ресурсов из MVP-каркаса. -->
-    <SolidColorBrush x:Key="PanelBrush" Color="#9E12161E"/>
-    <SolidColorBrush x:Key="PanelAltBrush" Color="#9E12161E"/>
-    <SolidColorBrush x:Key="BorderBrush" Color="#24FFFFFF"/>
-    <SolidColorBrush x:Key="AccentBrush" Color="#5FFFE6"/>
-    <SolidColorBrush x:Key="AccentDimBrush" Color="#7FFFEA"/>
-    <SolidColorBrush x:Key="TextBrush" Color="#F5F7FA"/>
+    <sys:Double x:Key="BlobAlpha">0</sys:Double>
 
 </ResourceDictionary>

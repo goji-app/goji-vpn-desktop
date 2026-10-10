@@ -3,11 +3,12 @@
              xmlns:s="clr-namespace:GodjiVpn.Utils"
                     xmlns:controls="clr-namespace:GodjiVpn.Controls">
 
-    <!-- Компоненты дизайна v5 «Стекло» (порт ui/theme/* из Android). Цвета — только
+    <!-- Компоненты «Goji Expressive» (Material 3 Expressive, порт ui/theme/* из Android 163f5ab;
+         имена стилей v5 «Стекло» сохранены, чтобы не трогать экраны). Цвета — только
          DynamicResource из словаря темы (Themes/LightTheme.xaml / DarkTheme.xaml), чтобы смена
          темы в рантайме перекрашивала всё без перезапуска. -->
 
-    <!-- ── Стекло ─────────────────────────────────────────────── -->
+    <!-- ── Поверхности (тональные, без теней и бликов) ─────────── -->
     <Style TargetType="controls:GlassPanel">
         <Setter Property="GlassColor" Value="{DynamicResource GlassColor}"/>
         <Setter Property="GlassStrongColor" Value="{DynamicResource GlassStrongColor}"/>
@@ -24,40 +25,40 @@
         <Setter Property="AccentColor" Value="{DynamicResource TealColor}"/>
     </Style>
 
-    <!-- godjiCard: карточка-модуль, радиус 26, тень Card. -->
+    <!-- godjiCard: карточка-модуль, surfaceContainer, радиус 24. -->
     <Style x:Key="GlassCard" TargetType="controls:GlassPanel" BasedOn="{StaticResource {x:Type controls:GlassPanel}}">
-        <Setter Property="CornerRadius" Value="26"/>
+        <Setter Property="CornerRadius" Value="24"/>
         <Setter Property="Level" Value="Normal"/>
         <Setter Property="Shadow" Value="Card"/>
     </Style>
 
-    <!-- godjiGlassPill: плашки, круглые кнопки 40, статусы, чипы. -->
+    <!-- godjiGlassPill: плашки, круглые кнопки 40, статусы, чипы — surfaceContainerHigh. -->
     <Style x:Key="GlassPill" TargetType="controls:GlassPanel" BasedOn="{StaticResource {x:Type controls:GlassPanel}}">
         <Setter Property="CornerRadius" Value="999"/>
-        <Setter Property="Level" Value="Normal"/>
+        <Setter Property="Level" Value="Strong"/>
         <Setter Property="Shadow" Value="Pill"/>
     </Style>
 
-    <!-- godjiGlassStrong: таб-бар, лист входа, кнопка подключения — плотное стекло. -->
+    <!-- godjiGlassStrong: лист входа, тост — уровень выше карточки (surfaceContainerHigh). -->
     <Style x:Key="GlassStrong" TargetType="controls:GlassPanel" BasedOn="{StaticResource {x:Type controls:GlassPanel}}">
-        <Setter Property="CornerRadius" Value="32"/>
+        <Setter Property="CornerRadius" Value="28"/>
         <Setter Property="Level" Value="Strong"/>
         <Setter Property="Shadow" Value="Strong"/>
     </Style>
 
-    <!-- godjiGlassFlat: строка/чип внутри карточки — без тени, слабое стекло. -->
+    <!-- godjiGlassFlat: строка/чип внутри карточки — surfaceContainerHighest. -->
     <Style x:Key="GlassFlat" TargetType="controls:GlassPanel" BasedOn="{StaticResource {x:Type controls:GlassPanel}}">
-        <Setter Property="CornerRadius" Value="20"/>
+        <Setter Property="CornerRadius" Value="16"/>
         <Setter Property="Level" Value="Faint"/>
         <Setter Property="Shadow" Value="None"/>
     </Style>
 
     <!-- ── Текст ───────────────────────────────────────────────── -->
-    <!-- Заголовки экранов v5: Manrope Bold 30 (в эталоне весь текст — Manrope). -->
+    <!-- Заголовки экранов: Manrope Bold 26 (Android 1.0.115: 30 → 26). -->
     <Style x:Key="ScreenTitle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource ManropeFamily}"/>
         <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="FontSize" Value="{s:Fs 30}"/>
+        <Setter Property="FontSize" Value="{s:Fs 26}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
 
@@ -87,16 +88,17 @@
         <Setter Property="Margin" Value="0,2,0,0"/>
     </Style>
 
-    <!-- Тонкий разделитель внутри карточек. -->
+    <!-- Разделитель внутри карточек: в M3 Expressive группы разделены «щелью» цвета фона
+         (Android: HorizontalDivider 2dp SurfaceBase), а не тонкой линией. -->
     <Style x:Key="Hair" TargetType="Rectangle">
-        <Setter Property="Height" Value="1"/>
-        <Setter Property="Fill" Value="{DynamicResource HairBrush}"/>
+        <Setter Property="Height" Value="2"/>
+        <Setter Property="Fill" Value="{DynamicResource BgSolidBrush}"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
 
     <Style x:Key="VHair" TargetType="Rectangle">
-        <Setter Property="Width" Value="1"/>
-        <Setter Property="Fill" Value="{DynamicResource HairBrush}"/>
+        <Setter Property="Width" Value="2"/>
+        <Setter Property="Fill" Value="{DynamicResource BgSolidBrush}"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
 
@@ -168,7 +170,7 @@
     <!-- Капсула с акцентным градиентом ("Продлить", "Скачать и установить"). -->
     <Style x:Key="AccentPillButton" TargetType="Button" BasedOn="{StaticResource BareButton}">
         <Setter Property="Height" Value="48"/>
-        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Foreground" Value="{DynamicResource SurfaceBrush}"/>
         <Setter Property="FontFamily" Value="{DynamicResource ManropeFamily}"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="FontSize" Value="{s:Fs 14}"/>
@@ -176,13 +178,10 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <controls:PillBorder x:Name="Bd" Background="{DynamicResource AccentGradientBrush}" Padding="16,0">
-                        <controls:PillBorder.Effect>
-                            <DropShadowEffect Color="{DynamicResource AccentGlowColor}" BlurRadius="18" ShadowDepth="3" Direction="270" Opacity="0.9"/>
-                        </controls:PillBorder.Effect>
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center">
                             <ContentPresenter.Resources>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource SurfaceBrush}"/>
                                     <Setter Property="FontFamily" Value="{DynamicResource ManropeFamily}"/>
                                     <Setter Property="FontWeight" Value="Bold"/>
                                     <Setter Property="TextTrimming" Value="CharacterEllipsis"/>

@@ -90,11 +90,11 @@
                                 </Style>
                             </Ellipse.Style>
                         </Ellipse>
-                        <Path Width="13" Height="13" Fill="White">
+                        <Path Width="13" Height="13" Fill="{DynamicResource SurfaceBrush}">
                             <Path.Style>
                                 <Style TargetType="Path" BasedOn="{StaticResource Icon}">
                                     <Setter Property="Data" Value="{StaticResource IconCheck}"/>
-                                    <Setter Property="Fill" Value="White"/>
+                                    <Setter Property="Fill" Value="{DynamicResource SurfaceBrush}"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding RefreshResultIsError}" Value="True">
                                             <Setter Property="Data" Value="{StaticResource IconPriorityHigh}"/>

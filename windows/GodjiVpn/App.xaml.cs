@@ -14,6 +14,7 @@ public partial class App : Application
 {
     private SingleInstanceService? _singleInstance;
     private SubscriptionRepository? _subscriptionRepository;
+    private JournalRecorder? _journalRecorder;
     private DispatcherTimer? _hourlyRefreshTimer;
     private DispatcherTimer? _updateCheckTimer;
     public TrayIconService? Tray { get; private set; }
@@ -85,14 +86,16 @@ public partial class App : Application
         var updateService = new UpdateService();
         var updateNotifier = new UpdateNotifier();
         var vpnEngine = new VpnEngine(); // конструктор сам регистрирует себя в VpnEngine.Current
+        // Журнал сети: подключения, смена сети, ошибки (см. JournalRecorder/NetworkJournal).
+        _journalRecorder = new JournalRecorder(vpnEngine, subscriptionRepository);
         // Правила Wi-Fi: превью-экземпляр только читает имя сети для экрана, но не следит за
         // сменой сети (не должен сам включать/выключать VPN рядом с установленным клиентом).
         var networkRules = new NetworkRulesManager(appSettings, vpnEngine, subscriptionRepository);
         if (uiPreview) networkRules.Refresh(); else networkRules.Start();
 
         var loginViewModel = new LoginViewModel(apiClient, tokenStore);
-        var connectViewModel = new ConnectViewModel(vpnEngine, subscriptionRepository);
         var pingSettings = new PingSettings();
+        var connectViewModel = new ConnectViewModel(vpnEngine, subscriptionRepository, pingSettings);
         var pingService = new PingService(pingSettings);
         var serversViewModel = new ServersViewModel(subscriptionRepository, pingService, customNodeStore, favoriteServersStore, appSettings);
         var plansViewModel = new PlansViewModel(apiClient, subscriptionRepository, tokenStore);

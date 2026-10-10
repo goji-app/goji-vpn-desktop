@@ -151,10 +151,7 @@
                         <TextBlock Text="Почта подтверждена" FontWeight="Medium" FontSize="{s:Fs 12.5}" Foreground="{DynamicResource TextSecondaryBrush}"
                                    HorizontalAlignment="Center" Margin="0,4,0,22"/>
                         <Border Width="88" Height="88" CornerRadius="44" Background="{DynamicResource TealBrush}" HorizontalAlignment="Center">
-                            <Border.Effect>
-                                <DropShadowEffect Color="{DynamicResource TealColor}" ShadowDepth="0" BlurRadius="28" Opacity="0.7"/>
-                            </Border.Effect>
-                            <Path Data="{StaticResource IconCheck}" Style="{StaticResource Icon}" Width="44" Height="44" Fill="White"/>
+                            <Path Data="{StaticResource IconCheck}" Style="{StaticResource Icon}" Width="44" Height="44" Fill="{DynamicResource SurfaceBrush}"/>
                         </Border>
                     </StackPanel>
                 </Grid>

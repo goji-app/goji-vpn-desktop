@@ -10,17 +10,15 @@ public enum GlassLevel { Normal, Strong, Faint }
 public enum GlassShadow { None, Card, Strong, Pill }
 
 /// <summary>
-/// Стеклянная поверхность дизайна v5 — порт Android CardStyle.kt (godjiCard/godjiGlassStrong/
-/// godjiGlassPill/godjiGlassFlat) без эффектов и библиотек: "стекло" получается слоями поверх
-/// мягкого общего фона (GlassBackdrop), как и в эталоне. Снизу вверх внутри формы: заливка по
-/// уровню → цветной Tint (если задан) → бегающий радиальный блик → диагональный глянец →
-/// светлая внутренняя тень сверху и тёмная снизу → контент → градиентная кромка 1px (+ акцентная
-/// обводка 1.5px). Снаружи — мягкая тень только ЗА пределами формы.
+/// Поверхность «Goji Expressive» (Material 3 Expressive) — порт Android CardStyle.kt
+/// (godjiCard/godjiGlassStrong/godjiGlassPill/godjiGlassFlat): плотная тональная заливка
+/// уровня surfaceContainer или Tint, у выбранного — акцентная обводка 2px. Имя и свойства
+/// прежнего стекла v5 сохранены, чтобы не трогать разметку экранов.
 ///
 /// CornerRadius зажимается до половины меньшей стороны — CornerRadius="999" даёт капсулу/круг,
 /// без искажений, которые давал бы обычный Border с радиусом больше половины высоты.
-/// Цвета рецепта — DP, выставленные неявным стилем из App.xaml через DynamicResource, поэтому
-/// смена темы перерисовывает все панели сама, без ручной подписки.
+/// Цвета — DP, выставленные неявным стилем из App.xaml через DynamicResource, поэтому смена
+/// темы перерисовывает все панели сама, без ручной подписки.
 /// </summary>
 public class GlassPanel : Decorator
 {
@@ -184,16 +182,18 @@ public class GlassPanel : Decorator
 
     #region rendering
 
+    /// <summary>«Goji Expressive» (Material 3 Expressive, порт Android CardStyle.kt 163f5ab):
+    /// плотная тональная заливка нужного уровня (Normal — surfaceContainer, Strong — High,
+    /// Faint — Highest) или Tint, без теней, бликов, кромок и внутренних теней. Рисуется один
+    /// раз и сама по себе не перерисовывается. Свойства рецепта стекла (Spot/Gloss/Rim/Inner/
+    /// Shadow) и Shadow остались ради совместимости разметки, но больше ничего не рисуют.</summary>
     protected override void OnRender(DrawingContext dc)
     {
         var size = RenderSize;
         if (size.Width <= 0 || size.Height <= 0) return;
-        var rect = new Rect(size);
         var r = EffectiveRadius(size);
-        var shape = new RectangleGeometry(rect, r, r);
+        var shape = new RectangleGeometry(new Rect(size), r, r);
         shape.Freeze();
-
-        DrawShadow(dc, rect, r, shape);
 
         var fill = Level switch
         {
@@ -201,135 +201,22 @@ public class GlassPanel : Decorator
             GlassLevel.Faint => GlassFaintColor,
             _ => GlassColor
         };
-        dc.DrawGeometry(Frozen(new SolidColorBrush(fill)), null, shape);
-        if (Tint != null) dc.DrawGeometry(Tint, null, shape);
-
-        dc.PushClip(shape);
-
-        // Блик — источник света на стеклянной поверхности (LocalGlassLight в Android). В эталоне
-        // он гуляет x .15→.85, y .05→.30 за 7 с, но здесь стоит неподвижно в верхней левой
-        // трети: блик есть на каждой карточке, и его движение держало рендер WPF активным,
-        // перерисовывая все панели 30 раз в секунду (основная нагрузка на процессор в простое).
-        var spot = new RadialGradientBrush
-        {
-            MappingMode = BrushMappingMode.Absolute,
-            RadiusX = 240,
-            RadiusY = 240,
-            GradientStops =
-            {
-                new GradientStop(SpotColor, 0),
-                new GradientStop(WithAlpha(SpotColor, 0), 1)
-            }
-        };
-        var light = new Point(size.Width * 0.32, size.Height * 0.11);
-        spot.Center = light;
-        spot.GradientOrigin = light;
-        spot.Freeze();
-        dc.DrawRectangle(spot, null, rect);
-
-        // Диагональный глянец → прозрачный к 45%.
-        dc.DrawRectangle(Frozen(new LinearGradientBrush(new GradientStopCollection
-        {
-            new GradientStop(GlossColor, 0),
-            new GradientStop(WithAlpha(GlossColor, 0), 0.45)
-        }, new Point(0, 0), new Point(1, 1))), null, rect);
-
-        // Внутренняя светлая тень сверху (14px) и тёмная снизу.
-        const double innerH = 14;
-        var innerTop = WithAlpha(InnerTopColor, (byte)(InnerTopColor.A * 0.45));
-        dc.DrawRectangle(Frozen(new LinearGradientBrush(new GradientStopCollection
-        {
-            new GradientStop(innerTop, 0),
-            new GradientStop(WithAlpha(innerTop, 0), 1)
-        }, new Point(0, 0), new Point(0, 1))), null, new Rect(0, 0, size.Width, Math.Min(innerH, size.Height)));
-        var bottomH = Math.Min(innerH * 1.3, size.Height);
-        dc.DrawRectangle(Frozen(new LinearGradientBrush(new GradientStopCollection
-        {
-            new GradientStop(WithAlpha(InnerBottomColor, 0), 0),
-            new GradientStop(InnerBottomColor, 1)
-        }, new Point(0, 0), new Point(0, 1))), null, new Rect(0, size.Height - bottomH, size.Width, bottomH));
-
-        dc.Pop();
+        dc.DrawGeometry(Tint ?? Frozen(new SolidColorBrush(fill)), null, shape);
 
         RenderOverlay(size, r);
     }
 
-    /// <summary>Кромка и акцентная обводка — отдельным визуальным слоем ПОВЕРХ контента (как
-    /// drawContent() → drawOutline() в Android), иначе подсветка строк до краёв её перекрывала бы.</summary>
+    /// <summary>Акцентная обводка 2px (выбранный сервер, текущий тариф) — отдельным слоем ПОВЕРХ
+    /// контента, иначе подсветка строк до краёв её перекрывала бы.</summary>
     private void RenderOverlay(Size size, double r)
     {
         using var dc = _overlay.RenderOpen();
-        var edge = new Rect(0.5, 0.5, Math.Max(0, size.Width - 1), Math.Max(0, size.Height - 1));
-        var er = Math.Max(0, r - 0.5);
-        var rim = new LinearGradientBrush
-        {
-            MappingMode = BrushMappingMode.Absolute,
-            StartPoint = new Point(0, 0),
-            EndPoint = new Point(size.Width * 0.82, size.Height),
-            GradientStops =
-            {
-                new GradientStop(RimAColor, 0),
-                new GradientStop(RimBColor, 0.35),
-                new GradientStop(RimCColor, 0.62),
-                new GradientStop(RimDColor, 1)
-            }
-        };
-        rim.Freeze();
-        var rimPen = new Pen(rim, 1);
-        rimPen.Freeze();
-        dc.DrawRoundedRectangle(null, rimPen, edge, er, er);
-        if (AccentBorder)
-        {
-            var accent = new Pen(Frozen(new SolidColorBrush(AccentColor)), 1.5);
-            accent.Freeze();
-            var ar = new Rect(0.75, 0.75, Math.Max(0, size.Width - 1.5), Math.Max(0, size.Height - 1.5));
-            dc.DrawRoundedRectangle(null, accent, ar, Math.Max(0, r - 0.75), Math.Max(0, r - 0.75));
-        }
+        if (!AccentBorder) return;
+        var accent = new Pen(Frozen(new SolidColorBrush(AccentColor)), 2);
+        accent.Freeze();
+        var ar = new Rect(1, 1, Math.Max(0, size.Width - 2), Math.Max(0, size.Height - 2));
+        dc.DrawRoundedRectangle(null, accent, ar, Math.Max(0, r - 1), Math.Max(0, r - 1));
     }
-
-    /// <summary>Мягкая тень только снаружи формы. Вместо размытия (эффекты в WPF дорогие при
-    /// анимированном стекле сверху) — стопка вложенных скруглённых прямоугольников со слабой
-    /// альфой: накопленная альфа линейно спадает от полной внутри до нуля на расстоянии blur/2
-    /// от края смещённой на dy формы — визуально то же, что setShadowLayer(blur, 0, dy) в Android.</summary>
-    private void DrawShadow(DrawingContext dc, Rect rect, double r, Geometry shape)
-    {
-        var (blur, dy) = Shadow switch
-        {
-            GlassShadow.Card => (22.0, 10.0),
-            GlassShadow.Strong => (26.0, 12.0),
-            GlassShadow.Pill => (12.0, 5.0),
-            _ => (0.0, 0.0)
-        };
-        if (blur <= 0 || ShadowColor.A == 0) return;
-
-        var outer = new RectangleGeometry(Rect.Inflate(rect, blur + dy + 4, blur + dy + 4));
-        var clip = new CombinedGeometry(GeometryCombineMode.Exclude, outer, shape);
-        clip.Freeze();
-        dc.PushClip(clip);
-
-        const int steps = 10;
-        var stepAlpha = (byte)Math.Max(1, ShadowColor.A / (steps + 1));
-        var stepBrush = Frozen(new SolidColorBrush(WithAlpha(ShadowColor, stepAlpha)));
-        var baseRect = new Rect(rect.X, rect.Y + dy, rect.Width, rect.Height);
-        for (var k = 0; k <= steps; k++)
-        {
-            var inflate = -blur / 2 + blur * k / steps;
-            var rr = Rect.Inflate(baseRect, inflate, inflate);
-            if (rr.Width <= 0 || rr.Height <= 0) continue;
-            var rad = Math.Max(0, r + inflate);
-            dc.DrawRoundedRectangle(stepBrush, null, rr, rad, rad);
-        }
-
-        // Контактная тень у самой кромки (blur 2, dy 1, альфа ×0.6).
-        var contact = Frozen(new SolidColorBrush(WithAlpha(ShadowColor, (byte)(ShadowColor.A * 0.6 / 2))));
-        var cr = new Rect(rect.X, rect.Y + 1, rect.Width, rect.Height);
-        dc.DrawRoundedRectangle(contact, null, Rect.Inflate(cr, 0.5, 0.5), r + 0.5, r + 0.5);
-        dc.DrawRoundedRectangle(contact, null, Rect.Inflate(cr, 1.5, 1.5), r + 1.5, r + 1.5);
-
-        dc.Pop();
-    }
-
-    private static Color WithAlpha(Color c, byte a) => Color.FromArgb(a, c.R, c.G, c.B);
 
     private static T Frozen<T>(T freezable) where T : Freezable
     {

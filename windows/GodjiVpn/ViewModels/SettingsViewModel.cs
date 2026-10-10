@@ -46,7 +46,7 @@ public sealed class BypassDomainItem
 
 /// <summary>Подэкраны Настроек — в Android это отдельные маршруты навигации
 /// (PingSettingsScreen, LogViewerDialog); здесь — подмена содержимого вкладки.</summary>
-public enum SettingsPage { Main, Appearance, Connection, Security, Updates, About, Ping, Log, Bypass, Wifi }
+public enum SettingsPage { Main, Appearance, Connection, Security, Updates, About, Ping, Log, Bypass, Wifi, Journal }
 
 /// <summary>Аналог SettingsScreen.kt — версия/HWID (About), просмотр логов вместо отдельного
 /// LogViewerDialog.kt (здесь один экран проще нескольких диалогов на маленьком приложении),
@@ -137,14 +137,20 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         if (LeakChecking) return;
         LeakChecking = true;
-        try { LeakReport = await _diagnostics.CheckAsync(); }
+        try
+        {
+            LeakReport = await _diagnostics.CheckAsync();
+            if (LeakReport.Verdict == NetworkDiagnostics.Verdict.Safe) NetworkJournal.Log(NetworkJournal.Kind.LEAK_OK);
+            else if (LeakReport.Verdict == NetworkDiagnostics.Verdict.Leak) NetworkJournal.Log(NetworkJournal.Kind.LEAK_FAIL);
+        }
         catch { LeakReport = new NetworkDiagnostics.Report(NetworkDiagnostics.Verdict.Error, null, null, null, false, false, false); }
         finally { LeakChecking = false; }
     }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsMainPage), nameof(IsPingPage), nameof(IsLogPage), nameof(IsBypassPage), nameof(IsWifiPage),
-        nameof(IsAppearancePage), nameof(IsConnectionPage), nameof(IsSecurityPage), nameof(IsUpdatesPage), nameof(IsAboutPage))]
+        nameof(IsAppearancePage), nameof(IsConnectionPage), nameof(IsSecurityPage), nameof(IsUpdatesPage), nameof(IsAboutPage),
+        nameof(IsJournalPage))]
     private SettingsPage page = SettingsPage.Main;
 
     public bool IsMainPage => Page == SettingsPage.Main;
@@ -152,6 +158,26 @@ public sealed partial class SettingsViewModel : ObservableObject
     public bool IsLogPage => Page == SettingsPage.Log;
     public bool IsBypassPage => Page == SettingsPage.Bypass;
     public bool IsWifiPage => Page == SettingsPage.Wifi;
+    public bool IsJournalPage => Page == SettingsPage.Journal;
+
+    /// <summary>«Журнал сети» (Настройки → Подключение, и с «Главной»).</summary>
+    public JournalViewModel Journal { get; } = new(
+        () => VpnEngine.Current?.IsRunning == true,
+        RunOnUi);
+
+    private static void RunOnUi(Action action)
+    {
+        var d = System.Windows.Application.Current?.Dispatcher;
+        if (d == null || d.CheckAccess()) action();
+        else d.BeginInvoke(action);
+    }
+
+    [RelayCommand]
+    public void OpenJournal()
+    {
+        Journal.Refresh();
+        Page = SettingsPage.Journal;
+    }
     public bool IsAppearancePage => Page == SettingsPage.Appearance;
     public bool IsConnectionPage => Page == SettingsPage.Connection;
     public bool IsSecurityPage => Page == SettingsPage.Security;
@@ -272,6 +298,10 @@ public sealed partial class SettingsViewModel : ObservableObject
         _api = api;
         selectedLogFile = LogFiles[0];
         selectedLogFile.IsSelected = true;
+        // Превью-экземпляр: сразу нужный раздел (GODJI_UI_PREVIEW_SETTINGS=Journal и т. п.).
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW") == "1" &&
+            Enum.TryParse<SettingsPage>(Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_SETTINGS"), true, out var previewPage))
+            page = previewPage;
         foreach (var m in PingMethods) m.IsSelected = m.Method == _pingSettings.Method;
         pingTestUrl = _pingSettings.TestUrl;
         foreach (var m in ThemeModes) m.IsSelected = m.Mode == _theme.Mode;
@@ -325,7 +355,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private void Back() => Page = Page switch
     {
         // Без прокрутки настройки разложены по разделам: «назад» — на уровень выше.
-        SettingsPage.Ping or SettingsPage.Bypass or SettingsPage.Wifi => SettingsPage.Connection,
+        SettingsPage.Ping or SettingsPage.Bypass or SettingsPage.Wifi or SettingsPage.Journal => SettingsPage.Connection,
         SettingsPage.Log => SettingsPage.About,
         _ => SettingsPage.Main
     };

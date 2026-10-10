@@ -136,7 +136,7 @@
                                             <controls:PillBorder Grid.Column="1" Background="{DynamicResource DangerBrush}" MinWidth="20" Height="20"
                                                                  Padding="6,0" Margin="10,0,0,0" VerticalAlignment="Center"
                                                                  Visibility="{Binding HasUnread, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                <TextBlock Text="{Binding UnreadCount}" FontSize="{s:Fs 10.5}" FontWeight="Bold" Foreground="White"
+                                                <TextBlock Text="{Binding UnreadCount}" FontSize="{s:Fs 10.5}" FontWeight="Bold" Foreground="{DynamicResource SurfaceBrush}"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </controls:PillBorder>
                                             <Path Grid.Column="2" Data="{StaticResource IconChevronRight}" Style="{StaticResource Icon}" Width="15" Height="15"

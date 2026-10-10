@@ -88,6 +88,7 @@ public sealed class NetworkRulesManager
                 if (_engine.IsRunning && _settings.WifiDisconnectTrusted)
                 {
                     VpnEngine.Log($"wifi-rules: доверенная сеть «{ssid}» — отключаю VPN");
+                    NetworkJournal.Log(NetworkJournal.Kind.RULE_TRUSTED_DISCONNECT, ssid);
                     await _engine.DisconnectAsync();
                 }
                 return;
@@ -95,6 +96,7 @@ public sealed class NetworkRulesManager
             if (!isFirst && !running && _settings.WifiAutoConnect && _subscription.SelectedNode is { } node)
             {
                 VpnEngine.Log($"wifi-rules: чужая сеть «{(ssid.Length > 0 ? ssid : "?")}» — включаю VPN");
+                NetworkJournal.Log(NetworkJournal.Kind.RULE_AUTOCONNECT, ssid);
                 await _engine.ConnectAsync(node);
             }
         }

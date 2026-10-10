@@ -24,7 +24,7 @@
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <ContentPresenter.Resources>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource SurfaceBrush}"/>
                                         <Setter Property="FontWeight" Value="Bold"/>
                                     </Style>
                                 </ContentPresenter.Resources>

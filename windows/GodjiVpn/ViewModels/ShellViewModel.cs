@@ -26,6 +26,11 @@ public sealed partial class ShellViewModel : ObservableObject
         Settings.RequestLogout += () => LoggedOut?.Invoke();
         Connect.NavigateToPlansRequested += () => SelectedTabIndex = 2;
         Connect.NavigateToServersRequested += () => SelectedTabIndex = 1;
+        Connect.OpenJournalRequested += () =>
+        {
+            Settings.OpenJournal();
+            SelectedTabIndex = 3;
+        };
         Servers.ServerPicked += () => SelectedTabIndex = 0;
         // Превью-экземпляр (сверка вёрстки, замеры): открыть сразу нужную вкладку.
         if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW") == "1" &&

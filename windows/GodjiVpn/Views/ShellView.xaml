@@ -4,9 +4,10 @@
              xmlns:s="clr-namespace:GodjiVpn.Utils"
              xmlns:controls="clr-namespace:GodjiVpn.Controls">
     <UserControl.Resources>
-        <!-- Вкладка таб-бара v5: иконка из эталона (обводка) + подпись 10 Bold, выбранная —
-             TealDeep, остальные — TextSecondary. Сама "линза" под выбранной вкладкой — отдельный
-             слой (Lens ниже), вкладка прозрачна. -->
+        <!-- Вкладка нижней панели M3 Expressive (порт Android GlassTabBar.kt, 163f5ab): иконка
+             из эталона (обводка 2) на таблетке-индикаторе secondaryContainer 56×32, которая у
+             выбранной вкладки раскрывается пружиной от 24 до 56; подпись 12, у выбранной — Bold и
+             TextPrimary, у остальных — SemiBold и TextSecondary. -->
         <Style x:Key="GlassTab" TargetType="RadioButton">
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -16,20 +17,48 @@
                     <ControlTemplate TargetType="RadioButton">
                         <Border Background="Transparent">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Viewbox Width="21" Height="21" HorizontalAlignment="Center">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Data="{TemplateBinding Tag}" Stroke="{TemplateBinding Foreground}" StrokeThickness="2"
-                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <TextBlock Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"
-                                           FontFamily="{StaticResource ManropeFamily}" FontWeight="Bold" FontSize="{s:Fs 10}"
-                                           HorizontalAlignment="Center" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
+                                <Grid Width="56" Height="32" HorizontalAlignment="Center">
+                                    <Border x:Name="Indicator" Width="24" CornerRadius="16" Background="{DynamicResource LensBrush}"
+                                            HorizontalAlignment="Center" Opacity="0"/>
+                                    <Viewbox Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Canvas Width="24" Height="24">
+                                            <Path x:Name="IconPath" Data="{TemplateBinding Tag}" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2"
+                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                </Grid>
+                                <TextBlock x:Name="Label" Text="{TemplateBinding Content}" Foreground="{DynamicResource TextSecondaryBrush}"
+                                           FontFamily="{StaticResource ManropeFamily}" FontWeight="SemiBold" FontSize="{s:Fs 12}"
+                                           HorizontalAlignment="Center" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="{DynamicResource TealDeepBrush}"/>
+                                <Setter TargetName="Indicator" Property="Opacity" Value="1"/>
+                                <Setter TargetName="IconPath" Property="Stroke" Value="{DynamicResource OnSecondaryContainerBrush}"/>
+                                <Setter TargetName="Label" Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                                <Setter TargetName="Label" Property="FontWeight" Value="Bold"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <!-- spring(dampingRatio 0.6, stiffness 500) — ElasticEase с одним перелётом. -->
+                                            <DoubleAnimation Storyboard.TargetName="Indicator" Storyboard.TargetProperty="Width"
+                                                             From="24" To="56" Duration="0:0:0.4">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <ElasticEase Oscillations="1" Springiness="6" EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Indicator" Storyboard.TargetProperty="Width"
+                                                             To="24" Duration="0:0:0.15"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -39,8 +68,8 @@
     </UserControl.Resources>
 
     <Grid Background="{DynamicResource BgBrush}">
-        <!-- 64 капсула + 10 отступ снизу + 10 воздуха — контент не уходит под таб-бар. -->
-        <Grid Margin="0,0,0,84">
+        <!-- Нижняя панель 64 — контент над ней. -->
+        <Grid Margin="0,0,0,64">
             <ContentControl Content="{Binding Connect}"
                              Visibility="{Binding SelectedTabIndex, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=0}"/>
             <ContentControl Content="{Binding Servers}"
@@ -51,28 +80,19 @@
                              Visibility="{Binding SelectedTabIndex, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=3}"/>
         </Grid>
 
-        <!-- Плавающая стеклянная капсула таб-бара (GlassTabBar.kt): отступ 14 от краёв, высота 64,
-             "линза" скользит под выбранной вкладкой с пружиной. -->
-        <controls:GlassPanel Style="{StaticResource GlassStrong}" CornerRadius="999" Height="64"
-                             VerticalAlignment="Bottom" Margin="14,0,14,10" Padding="5">
-            <Grid x:Name="TabHost" SizeChanged="OnTabHostSizeChanged">
-                <controls:GlassPanel x:Name="Lens" Style="{StaticResource GlassPill}" Tint="{DynamicResource LensBrush}"
-                                     HorizontalAlignment="Left">
-                    <controls:GlassPanel.RenderTransform>
-                        <TranslateTransform x:Name="LensX"/>
-                    </controls:GlassPanel.RenderTransform>
-                </controls:GlassPanel>
-                <UniformGrid Rows="1" Columns="4">
-                    <RadioButton Style="{StaticResource GlassTab}" Tag="{StaticResource TabIconHome}" Content="Главная"
-                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntEqualsConverter}, ConverterParameter=0}"/>
-                    <RadioButton Style="{StaticResource GlassTab}" Tag="{StaticResource TabIconServers}" Content="Серверы"
-                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntEqualsConverter}, ConverterParameter=1}"/>
-                    <RadioButton Style="{StaticResource GlassTab}" Tag="{StaticResource TabIconPlans}" Content="Подписка"
-                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntEqualsConverter}, ConverterParameter=2}"/>
-                    <RadioButton Style="{StaticResource GlassTab}" Tag="{StaticResource TabIconSettings}" Content="Настройки"
-                                 IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntEqualsConverter}, ConverterParameter=3}"/>
-                </UniformGrid>
-            </Grid>
-        </controls:GlassPanel>
+        <!-- Короткая нижняя панель навигации M3 Expressive: во всю ширину, surfaceContainer,
+             высота 64. -->
+        <Border Height="64" VerticalAlignment="Bottom" Background="{DynamicResource SurfaceContainerBrush}">
+            <UniformGrid Rows="1" Columns="4">
+                <RadioButton Style="{StaticResource GlassTab}" Tag="{StaticResource TabIconHome}" Content="Главная"
+                             IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntEqualsConverter}, ConverterParameter=0}"/>
+                <RadioButton Style="{StaticResource GlassTab}" Tag="{StaticResource TabIconServers}" Content="Серверы"
+                             IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntEqualsConverter}, ConverterParameter=1}"/>
+                <RadioButton Style="{StaticResource GlassTab}" Tag="{StaticResource TabIconPlans}" Content="Подписка"
+                             IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntEqualsConverter}, ConverterParameter=2}"/>
+                <RadioButton Style="{StaticResource GlassTab}" Tag="{StaticResource TabIconSettings}" Content="Настройки"
+                             IsChecked="{Binding SelectedTabIndex, Converter={StaticResource IntEqualsConverter}, ConverterParameter=3}"/>
+            </UniformGrid>
+        </Border>
     </Grid>
 </UserControl>

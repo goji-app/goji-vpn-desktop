@@ -93,7 +93,7 @@
                         <Button Style="{StaticResource LinkRowButton}" Content="Внешний вид" Tag="Тема и размер шрифта"
                                 Command="{Binding OpenAppearanceCommand}"/>
                         <Rectangle Style="{StaticResource Hair}"/>
-                        <Button Style="{StaticResource LinkRowButton}" Content="Подключение" Tag="Пинг серверов, Wi-Fi, сайты мимо VPN"
+                        <Button Style="{StaticResource LinkRowButton}" Content="Подключение" Tag="Журнал сети, пинг, Wi-Fi, сайты мимо VPN"
                                 Command="{Binding OpenConnectionCommand}"/>
                         <Rectangle Style="{StaticResource Hair}"/>
                         <Button Style="{StaticResource LinkRowButton}" Content="Безопасность" Tag="Проверка утечек IP и DNS"
@@ -142,6 +142,9 @@
             </StackPanel>
             <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="24" Margin="0,16,0,0">
                 <StackPanel>
+                        <Button Style="{StaticResource LinkRowButton}" Content="Журнал сети" Tag="Когда VPN работал, смены сети и сбои"
+                                Command="{Binding OpenJournalCommand}"/>
+                        <Rectangle Style="{StaticResource Hair}"/>
                         <Button Style="{StaticResource LinkRowButton}" Content="Настройки пинга" Tag="Способ проверки и URL теста"
                                 Command="{Binding OpenPingSettingsCommand}"/>
                         <Rectangle Style="{StaticResource Hair}"/>
@@ -210,7 +213,7 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <Path Width="15" Height="15" Fill="White">
+                                    <Path Width="15" Height="15" Fill="{DynamicResource SurfaceBrush}">
                                         <Path.Style>
                                             <Style TargetType="Path" BasedOn="{StaticResource Icon}">
                                                 <Setter Property="Data" Value="{StaticResource IconPriorityHigh}"/>
@@ -359,6 +362,171 @@
                 </ItemsControl>
             </controls:GlassPanel>
         </StackPanel>
+
+        <!-- ═══ Подэкран: Журнал сети (порт Android JournalScreen.kt) — аптайм по часам за сутки,
+             счётчики и лента событий постранично, без прокрутки ═══ -->
+        <Grid Margin="16,16,16,12" DataContext="{Binding Journal}"
+              Visibility="{Binding DataContext.IsJournalPage, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <StackPanel Orientation="Horizontal">
+                <Button Style="{StaticResource BackButton}" Command="{Binding DataContext.BackCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                <TextBlock Text="Журнал сети" Style="{StaticResource SubTitle}"/>
+            </StackPanel>
+
+            <controls:SegmentedControl Grid.Row="1" ItemsSource="{Binding Days}" DisplayMemberPath="Label"
+                                       SelectedIndex="{Binding DayIndex, Mode=TwoWay}" Margin="0,14,0,0"/>
+
+            <controls:GlassPanel Grid.Row="2" Style="{StaticResource GlassCard}" Margin="0,8,0,0" Padding="16,12">
+                <StackPanel>
+                    <Grid>
+                        <StackPanel VerticalAlignment="Bottom">
+                            <TextBlock Text="Под защитой" FontWeight="SemiBold" FontSize="{s:Fs 12}" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <TextBlock Text="{Binding ProtectedLabel}" FontWeight="Medium" FontSize="{s:Fs 11.5}" Foreground="{DynamicResource TextSecondaryBrush}"
+                                       Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding PercentLabel}" FontWeight="ExtraBold" FontSize="{s:Fs 24}" Foreground="{DynamicResource TealBrush}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Hours}" Height="56" Margin="0,8,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" Columns="24"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Height="{Binding Height}" VerticalAlignment="Bottom" Margin="1.5,0" CornerRadius="3">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{DynamicResource TealBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Level}" Value="issue">
+                                                    <Setter Property="Background" Value="{DynamicResource TerracottaBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Level}" Value="empty">
+                                                    <Setter Property="Background" Value="{DynamicResource TrackBgBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Level}" Value="future">
+                                                    <Setter Property="Background" Value="{DynamicResource TrackBgBrush}"/>
+                                                    <Setter Property="Opacity" Value="0.45"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="00:00" FontSize="{s:Fs 10.5}" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Left"/>
+                        <TextBlock Grid.Column="1" Text="06:00" FontSize="{s:Fs 10.5}" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="12:00" FontSize="{s:Fs 10.5}" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="3" Text="18:00" FontSize="{s:Fs 10.5}" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="4" Text="24:00" FontSize="{s:Fs 10.5}" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right"/>
+                    </Grid>
+                </StackPanel>
+            </controls:GlassPanel>
+
+            <UniformGrid Grid.Row="3" Rows="1" Columns="3" Margin="-4,8,-4,0">
+                <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="20" Margin="4,0" Padding="12,10">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Connects}" FontWeight="ExtraBold" FontSize="{s:Fs 20}"/>
+                        <TextBlock Text="подключения" FontWeight="Medium" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </controls:GlassPanel>
+                <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="20" Margin="4,0" Padding="12,10">
+                    <StackPanel>
+                        <TextBlock Text="{Binding NetworkChanges}" FontWeight="ExtraBold" FontSize="{s:Fs 20}"/>
+                        <TextBlock Text="смены сети" FontWeight="Medium" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </controls:GlassPanel>
+                <controls:GlassPanel Style="{StaticResource GlassCard}" CornerRadius="20" Margin="4,0" Padding="12,10">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Issues}" FontWeight="ExtraBold" FontSize="{s:Fs 20}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource TerracottaBrush}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Issues}" Value="0">
+                                            <Setter Property="Foreground" Value="{DynamicResource TealBrush}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="сбои" FontWeight="Medium" FontSize="{s:Fs 11}" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </controls:GlassPanel>
+            </UniformGrid>
+
+            <TextBlock Grid.Row="4" Text="СОБЫТИЯ" Style="{StaticResource SectionLabel}" Margin="8,14,8,0"/>
+            <controls:GlassPanel Grid.Row="5" Style="{StaticResource GlassCard}" Margin="0,8,0,0" VerticalAlignment="Top">
+                <Grid>
+                    <TextBlock Text="Пока тихо. События появятся, когда VPN начнёт работать." FontWeight="Medium" FontSize="{s:Fs 12.5}"
+                               LineHeight="{s:Fs 17}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" Margin="16,14"
+                               Visibility="{Binding HasEvents, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                    <controls:PagedItems ItemsSource="{Binding Events}"
+                                         Visibility="{Binding HasEvents, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <controls:PagedItems.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <Rectangle Style="{StaticResource PagedSep}"/>
+                                    <Grid Margin="14,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="44"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Time}" FontWeight="Bold" FontSize="{s:Fs 12}" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        <Ellipse Grid.Column="1" Width="8" Height="8" Margin="0,5,10,0" VerticalAlignment="Top">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Fill" Value="{DynamicResource OffDotBrush}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Level}" Value="ok">
+                                                            <Setter Property="Fill" Value="{DynamicResource TealBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Level}" Value="issue">
+                                                            <Setter Property="Fill" Value="{DynamicResource TerracottaBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Level}" Value="switch">
+                                                            <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="{s:Fs 13.5}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Text}" FontSize="{s:Fs 11.5}" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       TextWrapping="Wrap" MaxHeight="34" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"
+                                                       Visibility="{Binding HasText, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </DataTemplate>
+                        </controls:PagedItems.ItemTemplate>
+                    </controls:PagedItems>
+                </Grid>
+            </controls:GlassPanel>
+            <TextBlock Grid.Row="6" Text="Журнал хранится 7 дней и только на этом компьютере." FontSize="{s:Fs 11}"
+                       Foreground="{DynamicResource TextMutedBrush}" Margin="8,8,8,0" TextWrapping="Wrap"/>
+        </Grid>
 
         <!-- ═══ Подэкран: Настройки пинга ═══ -->
         <StackPanel Margin="18,18,18,10" Visibility="{Binding IsPingPage, Converter={StaticResource BoolToVisibilityConverter}}">
