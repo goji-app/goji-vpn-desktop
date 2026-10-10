@@ -317,34 +317,139 @@ public sealed partial class PlansViewModel : ObservableObject
         if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW") == "1" &&
             int.TryParse(Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_PLANS"), out var previewSection))
             sectionIndex = Math.Clamp(previewSection, 0, Sections.Count - 1);
+        // Сразу — всё, что уже сохранено: страница не бывает пустой, даже если сети нет или VPN
+        // как раз переподключается. Подписку и новости обновляют и другие экраны/часовой таймер —
+        // страница просто следует за репозиторием.
+        ShowCached();
+        ApplySubscription();
+        ApplyNews();
+        _subscription.PropertyChanged += OnRepositoryChanged;
+        _subscription.AccountCleared += OnAccountCleared;
     }
 
-    public async Task LoadAsync()
+    // Порт Android b3dff12: страница сначала показывает сохранённое (AccountCache), а в фоне
+    // обновляет только разделы старше часа; кнопка «обновить» — всё и сразу. Сбой любого запроса
+    // ничего не стирает: на экране остаётся последнее сохранённое. Раньше каждое открытие вкладки
+    // заново тянуло всё подряд, а любой сбой (нет сети, VPN переподключается) показывал «0 дней»,
+    // «—» и пустые разделы.
+    private static readonly TimeSpan PageTtl = TimeSpan.FromHours(1);
+    private readonly Dictionary<AccountCache.Key, DateTime> _savedAt = new();
+    private List<DeviceDto> _rawDevices = new();
+
+    private void ShowCached()
     {
-        await _subscription.RefreshAsync();
+        if (AccountCache.Load<PlansResponse>(AccountCache.Key.Plans) is { } plans)
+        {
+            _savedAt[AccountCache.Key.Plans] = plans.SavedAtUtc;
+            ApplyPlans(plans.Value);
+        }
+        if (AccountCache.Load<ReferralsResponse>(AccountCache.Key.Referrals) is { } referrals)
+        {
+            _savedAt[AccountCache.Key.Referrals] = referrals.SavedAtUtc;
+            ApplyReferrals(referrals.Value);
+        }
+        if (AccountCache.Load<PartnerStatusResponse>(AccountCache.Key.Partner) is { } partner)
+        {
+            _savedAt[AccountCache.Key.Partner] = partner.SavedAtUtc;
+            ApplyPartner(partner.Value);
+        }
+        if (AccountCache.Load<List<DeviceDto>>(AccountCache.Key.Devices) is { } devices)
+        {
+            _savedAt[AccountCache.Key.Devices] = devices.SavedAtUtc;
+            ApplyDevices(devices.Value);
+        }
+    }
+
+    private bool IsStale(AccountCache.Key key) =>
+        !_savedAt.TryGetValue(key, out var at) || DateTime.UtcNow - at > PageTtl;
+
+    /// <summary>Открытие вкладки: подписка — если ей больше часа, остальные разделы — только
+    /// устаревшие.</summary>
+    public Task LoadAsync() => LoadCoreAsync(force: false);
+
+    private async Task LoadCoreAsync(bool force)
+    {
+        if (force) await _subscription.RefreshAsync();
+        else await _subscription.RefreshIfStaleAsync();
+        ApplySubscription();
+        ApplyNews();
+
+        var subId = _subscription.Subscription?.Id;
+        if (force || IsStale(AccountCache.Key.Plans))
+            await FetchAsync(AccountCache.Key.Plans, () => _api.GetPlansAsync(subId), ApplyPlans);
+        // referral_enabled/partner_program_enabled не проверяются отдельным запросом настроек:
+        // если фичу когда-нибудь выключат на бэкенде, эндпоинт просто перестанет отвечать
+        // успешно, и секция тихо не покажется (тот же принцип, что уже у broadcasts/plans).
+        if (force || IsStale(AccountCache.Key.Referrals))
+            await FetchAsync(AccountCache.Key.Referrals, () => _api.GetReferralsAsync(), ApplyReferrals);
+        if (subId is { } id && (force || IsStale(AccountCache.Key.Devices)))
+            await FetchAsync(AccountCache.Key.Devices, () => _api.GetDevicesAsync(id), ApplyDevices);
+        if (force || IsStale(AccountCache.Key.Partner))
+            await FetchAsync(AccountCache.Key.Partner, () => _api.GetPartnerStatusAsync(), ApplyPartner);
+
+        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_DEMO") == "1") FillPreviewDemo();
+    }
+
+    /// <summary>Удачный ответ — на экран и на диск; сбой — ничего не трогаем.</summary>
+    private async Task FetchAsync<T>(AccountCache.Key key, Func<Task<T>> request, Action<T> apply)
+    {
+        T value;
+        try { value = await request(); }
+        catch { return; }
+        apply(value);
+        _savedAt[key] = DateTime.UtcNow;
+        AccountCache.Save(key, value);
+    }
+
+    private void OnRepositoryChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(SubscriptionRepository.Subscription): RunOnUi(ApplySubscription); break;
+            case nameof(SubscriptionRepository.Broadcasts): RunOnUi(ApplyNews); break;
+            case nameof(SubscriptionRepository.SelectedId):
+            case nameof(SubscriptionRepository.Nodes): RunOnUi(() => CustomerId = _subscription.SelectedNode?.Uuid); break;
+        }
+    }
+
+    /// <summary>Выход из аккаунта — забыть всё, что показывали для прежнего.</summary>
+    private void OnAccountCleared() => RunOnUi(() =>
+    {
+        _savedAt.Clear();
+        _rawPlans = new List<PlanInfo>();
+        Periods.Clear();
+        Plans.Clear();
+        PersonalDiscountPercent = 0;
+        Referral = null;
+        Partner = null;
+        ApplyDevices(new List<DeviceDto>());
+        ApplySubscription();
+        ApplyNews();
+    });
+
+        private static void RunOnUi(Action action)
+    {
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess()) action();
+        else Avalonia.Threading.Dispatcher.UIThread.Post(action);
+    }
+
+    private void ApplySubscription()
+    {
         var sub = _subscription.Subscription;
         PlanName = sub?.PlanName ?? "—";
-        ExpiryLabel = sub?.ExpireAt is { } iso ? DateFormat.FormatDate(iso) : "—";
+        ExpiryLabel = sub?.ExpireAt is { Length: > 0 } iso ? DateFormat.FormatDate(iso) : "—";
         DaysLeft = sub?.DaysLeft ?? 0;
         DeviceLimit = sub?.DeviceLimit ?? 0;
         CustomerId = _subscription.SelectedNode?.Uuid;
-
         _subscriptionId = sub?.Id;
         DevicesDeleteSupportOnly = sub?.Kind == "trial" || sub?.Kind == "free";
         OnPropertyChanged(nameof(HasDevices));
-        Devices.Clear();
-        if (_subscriptionId is { } subId)
-        {
-            try
-            {
-                var devices = await _api.GetDevicesAsync(subId);
-                foreach (var d in devices) Devices.Add(ToDeviceItem(d));
-            }
-            catch { /* устройства — вспомогательная секция, не критична для остального экрана */ }
-            OnPropertyChanged(nameof(DevicesCountLabel));
-            OnPropertyChanged(nameof(DevicesSectionLabel));
-        }
+        // «Текущий» тариф в списке определяется по имени — пересобрать карточки под новую подписку.
+        if (_rawPlans.Count > 0) RebuildPlanCards();
+    }
 
+    private void ApplyNews()
+    {
         // Свежая по CreatedAt первая — порядок с бэкенда не гарантирован (см. BroadcastNotifier).
         _allNews = _subscription.Broadcasts.OrderByDescending(b => b.CreatedAt).Select(b =>
         {
@@ -361,71 +466,67 @@ public sealed partial class PlansViewModel : ObservableObject
         IsNewsExpanded = false;
         NewsPageIndex = 0;
         RefreshVisibleNews();
+    }
 
-        try
+    private void ApplyPlans(PlansResponse response)
+    {
+        _rawPlans = response.Plans;
+        PersonalDiscountPercent = (int)(response.CustomerDiscountPercent ?? 0);
+
+        var months = _rawPlans.SelectMany(p => p.Prices)
+            .Where(p => p.PriceType == "base")
+            .Select(p => p.PeriodValue)
+            .Distinct().OrderBy(m => m).ToList();
+        // Тихое обновление не сбрасывает выбранный пользователем период.
+        var keepSelection = Periods.Count > 0 && months.Contains(SelectedMonths);
+
+        Periods.Clear();
+        foreach (var m in months)
+            Periods.Add(new PeriodItem { Months = m, Label = m == 1 ? "1 месяц" : $"{m} мес." });
+
+        if (!keepSelection) SelectedMonths = months.FirstOrDefault(1);
+        RebuildPlanCards();
+    }
+
+    private void ApplyReferrals(ReferralsResponse r)
+    {
+        Referral = new ReferralUiModel
         {
-            var response = await _api.GetPlansAsync(_subscriptionId);
-            _rawPlans = response.Plans;
-            PersonalDiscountPercent = (int)(response.CustomerDiscountPercent ?? 0);
-
-            var months = _rawPlans.SelectMany(p => p.Prices)
-                .Where(p => p.PriceType == "base")
-                .Select(p => p.PeriodValue)
-                .Distinct().OrderBy(m => m).ToList();
-
-            Periods.Clear();
-            foreach (var m in months)
-                Periods.Add(new PeriodItem { Months = m, Label = m == 1 ? "1 месяц" : $"{m} мес." });
-
-            SelectedMonths = months.FirstOrDefault(1);
-            RebuildPlanCards();
-        }
-        catch
-        {
-            // Тарифы — вспомогательная информация; неудачная загрузка не должна мешать
-            // остальному экрану (подписка/срок уже подтянуты выше).
-        }
-
-        // referral_enabled/partner_program_enabled не проверяются отдельным запросом настроек:
-        // если фичу когда-нибудь выключат на бэкенде, эндпоинт просто перестанет отвечать
-        // успешно, и секция тихо не покажется (тот же принцип, что уже у broadcasts/plans).
-        try
-        {
-            var r = await _api.GetReferralsAsync();
-            Referral = new ReferralUiModel
+            Link = r.Link,
+            TotalReferrals = r.Summary.TotalReferrals,
+            ActiveReferrals = r.Summary.ActiveReferrals,
+            TotalBonusDays = r.Summary.TotalBonusDays,
+            Entries = r.Referrals.Select(e => new ReferralEntryItem
             {
-                Link = r.Link,
-                TotalReferrals = r.Summary.TotalReferrals,
-                ActiveReferrals = r.Summary.ActiveReferrals,
-                TotalBonusDays = r.Summary.TotalBonusDays,
-                Entries = r.Referrals.Select(e => new ReferralEntryItem
-                {
-                    DisplayName = DisplayNameFor(e),
-                    IsActive = e.IsActive,
-                    BonusDays = e.BonusDays
-                }).ToList()
-            };
-        }
-        catch { Referral = null; }
+                DisplayName = DisplayNameFor(e),
+                IsActive = e.IsActive,
+                BonusDays = e.BonusDays
+            }).ToList()
+        };
+    }
 
-        try
+    private void ApplyPartner(PartnerStatusResponse p)
+    {
+        Partner = new PartnerUiModel
         {
-            var p = await _api.GetPartnerStatusAsync();
-            Partner = new PartnerUiModel
-            {
-                IsPartner = p.IsPartner,
-                IsActive = p.Partner?.IsActive ?? false,
-                ApplicationStatus = p.Application?.Status,
-                CommissionRate = p.Partner?.CommissionRate ?? 0,
-                ClientCount = p.Stats?.ClientCount ?? 0,
-                TotalEarned = p.Partner?.TotalEarned ?? 0,
-                AvailableBalance = p.Partner?.AvailableBalance ?? 0,
-                PendingBalance = p.Partner?.PendingBalance ?? 0
-            };
-        }
-        catch { Partner = null; }
+            IsPartner = p.IsPartner,
+            IsActive = p.Partner?.IsActive ?? false,
+            ApplicationStatus = p.Application?.Status,
+            CommissionRate = p.Partner?.CommissionRate ?? 0,
+            ClientCount = p.Stats?.ClientCount ?? 0,
+            TotalEarned = p.Partner?.TotalEarned ?? 0,
+            AvailableBalance = p.Partner?.AvailableBalance ?? 0,
+            PendingBalance = p.Partner?.PendingBalance ?? 0
+        };
+    }
 
-        if (Environment.GetEnvironmentVariable("GODJI_UI_PREVIEW_DEMO") == "1") FillPreviewDemo();
+    private void ApplyDevices(List<DeviceDto> devices)
+    {
+        _rawDevices = devices;
+        Devices.Clear();
+        foreach (var d in devices) Devices.Add(ToDeviceItem(d));
+        OnPropertyChanged(nameof(DevicesCountLabel));
+        OnPropertyChanged(nameof(DevicesSectionLabel));
     }
 
     /// <summary>Только для превью-экземпляра (GODJI_UI_PREVIEW_DEMO=1, см. App.xaml.cs) — сверка
@@ -506,6 +607,11 @@ public sealed partial class PlansViewModel : ObservableObject
         {
             await _api.RenameDeviceAsync(subId, device.Hwid, newName);
             device.Name = newName;
+            if (_rawDevices.FirstOrDefault(d => d.Hwid == device.Hwid) is { } dto)
+            {
+                dto.ReadableName = newName;
+                AccountCache.Save(AccountCache.Key.Devices, _rawDevices);
+            }
         }
         catch { /* переименование — необязательное действие, молча оставляем прежнее имя */ }
         finally { device.IsBusy = false; }
@@ -544,6 +650,8 @@ public sealed partial class PlansViewModel : ObservableObject
         {
             await _api.DeleteDeviceAsync(subId, device.Hwid);
             Devices.Remove(device);
+            _rawDevices.RemoveAll(d => d.Hwid == device.Hwid);
+            AccountCache.Save(AccountCache.Key.Devices, _rawDevices);
             OnPropertyChanged(nameof(DevicesCountLabel));
             OnPropertyChanged(nameof(DevicesSectionLabel));
         }
@@ -647,9 +755,10 @@ public sealed partial class PlansViewModel : ObservableObject
     [RelayCommand]
     private async Task RefreshAsync()
     {
+        // Кнопка «обновить» — всё сразу, без оглядки на возраст сохранённого; спиннер ждёт ответов.
         Refreshing = true;
-        await LoadAsync();
-        Refreshing = false;
+        try { await LoadCoreAsync(force: true); }
+        finally { Refreshing = false; }
     }
 
     /// <summary>Открывает сразу /checkout с уже известным тарифом и периодом — раньше кнопка
